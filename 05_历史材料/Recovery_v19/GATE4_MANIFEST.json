@@ -1,0 +1,150 @@
+{
+  "file_count": 19,
+  "files": [
+    {
+      "name": "GATE4_ACCEPTANCE_CONTRACT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_ACCEPTANCE_CONTRACT.json",
+      "role": "ACCEPTANCE_CONTRACT",
+      "sha256": "39669670a4780cbc2dcb761e77f9a6bac88c93e1683b2613fe131ca5689d2292",
+      "size_bytes": 1805
+    },
+    {
+      "name": "GATE4_ACCEPTANCE_RESULTS.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_ACCEPTANCE_RESULTS.json",
+      "role": "ACCEPTANCE_RESULTS",
+      "sha256": "981c36ca6a4ad6b8b34e8d52fda5e9721de8b610d37a344cf3be6862a935a825",
+      "size_bytes": 987
+    },
+    {
+      "name": "GATE4_BLOCKER_LEDGER.csv",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_BLOCKER_LEDGER.csv",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "2852ef14707938c628e0e5604cb7556709cb8956690a6760527f4e2628d56dc1",
+      "size_bytes": 118
+    },
+    {
+      "name": "GATE4_BLOCKER_LEDGER.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_BLOCKER_LEDGER.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "d14ebad2307c6e9ed1a5e2c1db8ea3d679bfc7c5cf29478447dfe30b0b498987",
+      "size_bytes": 711
+    },
+    {
+      "name": "GATE4_COMPATIBILITY_PATCH_AUDIT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_COMPATIBILITY_PATCH_AUDIT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "13da739408e7ec5af9dd1c7ae93f852dc304bb230dbc9e6724c1d0db085d82c2",
+      "size_bytes": 2948
+    },
+    {
+      "name": "GATE4_DOUBLE_RUN_MANIFEST.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_DOUBLE_RUN_MANIFEST.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "559395f58b67832f91b2d4ba63eec41672ca1fe1f7089b6bd734d5d1c27c1396",
+      "size_bytes": 1191
+    },
+    {
+      "name": "GATE4_FINAL_PUBLICATION_INVENTORY.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_FINAL_PUBLICATION_INVENTORY.json",
+      "role": "PUBLICATION_INVENTORY",
+      "sha256": "8fbf84bce2645d015506b92426135429cf0072db5d4dc024e234b1cfd1caa2ca",
+      "size_bytes": 1809
+    },
+    {
+      "name": "GATE4_FINANCIAL_AUDIT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_FINANCIAL_AUDIT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "0f726358e3fb8bf987445423d1f7cc7edf3a931b5c58e27fec114b96e4f5b8e6",
+      "size_bytes": 6898
+    },
+    {
+      "name": "GATE4_FORMULA_AUDIT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_FORMULA_AUDIT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "d979abd7f25dc64701582a0ddf73a5a5d62612d823924a95cc0853b57f85e483",
+      "size_bytes": 2093
+    },
+    {
+      "name": "GATE4_GOLDEN_VALIDATION.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_GOLDEN_VALIDATION.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "328b360860c3c15e44cd231c610b74797510ee7ffe27cb177ba21bd621df6c68",
+      "size_bytes": 5475
+    },
+    {
+      "name": "GATE4_MODEL_RECORD.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_MODEL_RECORD.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "0b24b8c7ad3025e945145f502a2786959963fc936fad6a1cf81c63bcd5b52549",
+      "size_bytes": 505
+    },
+    {
+      "name": "GATE4_SOURCE_PROTECTION_AUDIT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_SOURCE_PROTECTION_AUDIT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "b30446e881e38e4274232b7097244877d2ca7bdf199a99a8bedc9f16b522758d",
+      "size_bytes": 12234
+    },
+    {
+      "name": "GATE4_STATE.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_STATE.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "77f4db956f50062a71ad59b72299c4255f59074ec887bb7c72f176b348c73c8b",
+      "size_bytes": 1790
+    },
+    {
+      "name": "GATE4_SUMMARY.md",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_SUMMARY.md",
+      "role": "USER_SUMMARY",
+      "sha256": "caba9e993e51f67e5aa6b0cbe1b9f1656b038845a22a16b3d50262b1702db3d4",
+      "size_bytes": 2325
+    },
+    {
+      "name": "GATE4_TEST_REPORT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_TEST_REPORT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "743001ee1e0663c8dc319c7e6561656d1f6e9e1a6774a3458ccffb38f36275ae",
+      "size_bytes": 24793
+    },
+    {
+      "name": "GATE4_VALIDATION.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_VALIDATION.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "bc94c17e417d9a89db7becd497443e649e4b00b1b9017b2d4aeed3c4d4ce4753",
+      "size_bytes": 1280
+    },
+    {
+      "name": "GATE4_VISUAL_AUDIT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_VISUAL_AUDIT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "d065ecc587c5c0da6bc8215ad18e6e09599c0b6d6986fbc7af1d4701cbdc4d62",
+      "size_bytes": 9226
+    },
+    {
+      "name": "GATE4_WORKBOOK_ROW_IDENTITY_AUDIT.json",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_WORKBOOK_ROW_IDENTITY_AUDIT.json",
+      "role": "VALIDATION_AUDIT_OR_STATE",
+      "sha256": "be65882c1a075a2cc566649dc6e31cc594d61a7bb612cb0b01c321c5b6935040",
+      "size_bytes": 1964
+    },
+    {
+      "name": "GATE4_最终交付说明.md",
+      "path": "/private/tmp/recovery-v19-continuous/GATE4_Independent_Golden_Revalidation_9639787265334B77/GATE4_最终交付说明.md",
+      "role": "FINAL_DELIVERY_NOTE",
+      "sha256": "44619f7b4b2f214a74abf969a262dfafaa29d8997fef1339350becb0ecc01e85",
+      "size_bytes": 1448
+    }
+  ],
+  "freeze_id": "RECOVERY-V19-GATE4-PASS-9639787265334B77",
+  "gate3_manifest_sha256": "5d839696584bd9beb4961819279bfc9ffb6a924d962dabb6cbf3b9974fa1c8ca",
+  "gate3_workbook_sha256": "9639787265334b77a3647b9fd86aa77f9a94a3f396c6ca37108d8ee5803f215f",
+  "model": {
+    "family": "GPT-5.6 Sol",
+    "identity": "gpt-5.6-sol",
+    "reasoning_effort": "xhigh"
+  },
+  "publication_performed": false,
+  "schema_version": "RECOVERY_V19_GATE4_MANIFEST_PASS_V2",
+  "stage": "GATE4_INDEPENDENT_GOLDEN_REVALIDATION",
+  "status": "PASS_PUBLISHABLE"
+}

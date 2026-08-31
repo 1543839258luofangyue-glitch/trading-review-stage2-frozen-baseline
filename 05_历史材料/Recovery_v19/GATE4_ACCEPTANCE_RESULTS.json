@@ -1,0 +1,41 @@
+{
+  "blocking_defect_count": 0,
+  "core": {
+    "blocking_check_fail_count": 0,
+    "check_count": 33,
+    "fail_count": 0,
+    "pass_count": 33,
+    "status": "PASS",
+    "unique_blocking_defect_count": 0
+  },
+  "deterministic": {
+    "core_byte_identical": true,
+    "supplemental_byte_identical": true
+  },
+  "fail_count": 0,
+  "freeze_id": "RECOVERY-V19-GATE4-PASS-9639787265334B77",
+  "pass_count": 46,
+  "publishable": true,
+  "published": false,
+  "schema_version": "RECOVERY_V19_GATE4_ACCEPTANCE_RESULTS_V2",
+  "source_protection": {
+    "root_mtime": "2026-08-23T07:05:00-0700",
+    "six_hashes_match": true,
+    "source_writes": 0
+  },
+  "stage": "GATE4_INDEPENDENT_GOLDEN_REVALIDATION",
+  "status": "PASS_PUBLISHABLE",
+  "supplemental": {
+    "check_count": 9,
+    "fail_count": 0,
+    "pass_count": 9,
+    "status": "PASS"
+  },
+  "test_count": 46,
+  "visual": {
+    "blocking_defect_count": 0,
+    "manual_pass_count": 19,
+    "render_count": 19,
+    "sheet_count": 10
+  }
+}

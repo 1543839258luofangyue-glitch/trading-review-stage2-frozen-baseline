@@ -1,0 +1,65 @@
+{
+  "schema_version": "RECOVERY_V19_FINAL_PUBLICATION_RECEIPT_V1",
+  "published_at_utc": "2026-08-23T07:32:15Z",
+  "status": "PUBLISHED_AND_HASH_VERIFIED",
+  "architecture": "Codex Recovery Architecture v19",
+  "architecture_status": "FROZEN_UNCHANGED",
+  "gate3_freeze_id": "RECOVERY-V19-GATE3-REPAIR-9639787265334B77",
+  "gate4_freeze_id": "RECOVERY-V19-GATE4-PASS-9639787265334B77",
+  "gate4_status": "PASS_PUBLISHABLE",
+  "validation_model": {
+    "model": "gpt-5.6-sol",
+    "display_name": "GPT-5.6 Sol",
+    "reasoning_effort": "xhigh"
+  },
+  "source_protection": {
+    "source_root": "/Users/luodaluo/Desktop/30天复盘原始数据",
+    "source_root_mtime": "2026-08-23T07:05:00-0700",
+    "source_writes": 0,
+    "full_rescan_performed": false,
+    "legacy_code_rerun": false
+  },
+  "recovery_root": "/Users/luodaluo/Desktop/30天复盘原始数据_Recovery_v19",
+  "published_recovery_stage_directories": 11,
+  "stage_copy_comparison": {
+    "newly_published_directories_checked": 9,
+    "byte_differences": 0
+  },
+  "user_output_root": "/Users/luodaluo/Documents/Codex/2026-08-22/referenced-chatgpt-conversation-this-is-an/outputs",
+  "user_outputs": [
+    {
+      "file": "Recovery_v19_客观事实与工程状态交付.xlsx",
+      "sha256": "9639787265334b77a3647b9fd86aa77f9a94a3f396c6ca37108d8ee5803f215f"
+    },
+    {
+      "file": "Recovery_v19_客观独立分析报告.md",
+      "sha256": "8f21906da5251aba8ecb9ab6b072d47e326164ba8bbe39a7d7b71b6b979522ad"
+    },
+    {
+      "file": "Recovery_v19_实施选择与边界.md",
+      "sha256": "f0a6aa5d833d084382a7db9e2acb14a615ee9c5d8a470c4d2abd0ec0a358d83a"
+    },
+    {
+      "file": "GATE3_ACTIVE_136_AUTHORITATIVE_FACTS.csv",
+      "sha256": "6335d879f1b2b27ee8ce3ebeff05aa982a2635a6f263b48ce7b94488780f6033"
+    },
+    {
+      "file": "GATE3_COPY_12_AUTHORITATIVE_FACTS.csv",
+      "sha256": "d589d785c1ed92a7cd7a58be1925323a7983863e73f4af80cbfb0deff6d47958"
+    },
+    {
+      "file": "GATE4_最终交付说明.md",
+      "sha256": "44619f7b4b2f214a74abf969a262dfafaa29d8997fef1339350becb0ecc01e85"
+    },
+    {
+      "file": "GATE4_ACCEPTANCE_RESULTS.json",
+      "sha256": "981c36ca6a4ad6b8b34e8d52fda5e9721de8b610d37a344cf3be6862a935a825"
+    },
+    {
+      "file": "GATE4_MANIFEST.json",
+      "sha256": "454ecb3fda976903dc424aca5ea19570ed937c3d7ac8c87b47ba4bba0086183e"
+    }
+  ],
+  "user_output_count_before_receipt": 8,
+  "publication_result": "PASS"
+}
