@@ -4,11 +4,12 @@
 This candidate program never writes source files, never performs the three real
 business recomputations, and never builds the full 136-trade chain.  It verifies
 the exact eight K05 files, loads only manifest-selected sample objects, preserves
-all original values as strings, and emits one canonical JSONL fact base.
+all original values as strings, emits one canonical JSONL fact base, and rebuilds
+both the AI-readable view and the user-review workbook from that same fact base.
 """
 
-import argparse, csv, hashlib, json, os, re, shutil, stat, zipfile
-from collections import defaultdict
+import argparse, csv, hashlib, json, os, re, shutil, stat, subprocess, tempfile, zipfile
+from collections import Counter, defaultdict
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -50,6 +51,10 @@ def jsonl_write(path, records):
 def json_write(path, value):
     with open(path,'w',encoding='utf-8',newline='\n') as f:
         json.dump(value,f,ensure_ascii=False,sort_keys=True,indent=2); f.write('\n')
+
+def read_jsonl(path):
+    with open(path,encoding='utf-8') as handle:
+        return [json.loads(line) for line in handle if line.strip()]
 
 def col_index(label):
     n=0
@@ -254,6 +259,380 @@ def build(config_path, manifest_path, output_path):
     business_sha=sha_file(output_path)
     print(canonical({'record_count':len(records),'business_content_sha256':business_sha,'selected_event_count':len(selected_event_ids)}))
 
+def verify_file_identity(path, identity, label):
+    path=Path(path)
+    if not path.is_file():
+        raise RuntimeError(f'VIEW_INPUT_MISSING:{label}:{path}')
+    if path.stat().st_size!=identity['bytes'] or sha_file(path)!=identity['sha256']:
+        raise RuntimeError(f'VIEW_INPUT_IDENTITY_MISMATCH:{label}:{path}')
+
+def build_ai_view_text(records, fact_path, sample_manifest, view_config):
+    counts=Counter(record['record_type'] for record in records)
+    ai=view_config['ai_view']
+    lines=[ai['title'],'',ai['identity'],'',ai['boundary'],'','## 一、样本覆盖','','| 类别 | 选中对象 |','|---|---|']
+    for category,item in sample_manifest['selected_by_category'].items():
+        lines.append(f'| {category} | {item["stable_id"]} |')
+    lines += ['', '## 二、事实底座对账', '', f'- 总记录：{len(records)}']
+    lines += [f'- {name}：{count}' for name,count in sorted(counts.items())]
+    lines += [f'- 业务内容SHA-256：`{sha_file(fact_path)}`', '', '## 三、连续读取正文', '', ai['body_note'], '']
+    chunk_size=int(ai['chunk_size'])
+    for start in range(0,len(records),chunk_size):
+        group=records[start:start+chunk_size]
+        lines += [
+            f'### 分块 {start//chunk_size+1:03d}',
+            '',
+            f'- 起始事实ID：`{group[0]["fact_id"]}`',
+            f'- 结束事实ID：`{group[-1]["fact_id"]}`',
+            f'- 上一分块结束：`{records[start-1]["fact_id"] if start else "NONE"}`',
+            f'- 下一分块开始：`{records[start+chunk_size]["fact_id"] if start+chunk_size<len(records) else "NONE"}`',
+            '',
+            '```jsonl',
+        ]
+        lines.extend(canonical(record) for record in group)
+        lines += ['```','']
+    lines += ['## 四、读取结论边界','']
+    lines.extend(f'- {item}' for item in ai['closing_boundaries'])
+    return '\n'.join(lines)+'\n'
+
+def ai_view_records(text):
+    records=[]; inside=False
+    for line in text.splitlines():
+        if line=='```jsonl':
+            inside=True
+        elif line=='```' and inside:
+            inside=False
+        elif inside and line.strip():
+            records.append(json.loads(line))
+    return records
+
+def build_workbook_payload(records, sample_manifest, receipts, contract_id):
+    facts=[]; relations=[]; lineage=[]; methods=[]
+    for record in records:
+        row={
+            '事实ID':record['fact_id'],
+            '样本类别':'；'.join(record['sample_categories']),
+            '对象ID':record['object_id'],
+            '记录类型':record['record_type'],
+            '原始时间':record['event_time_original'] or '',
+            '来源表':record['source_table'],
+            '来源行':record['source_row'] or '',
+            '证据状态':record['evidence_status'],
+            '来源事件ID':record['source_event_id'] or '',
+            '原始记录JSON':canonical(record['raw_record']),
+            '能证明':record['can_prove'],
+            '不能证明':record['cannot_prove'],
+        }
+        if record['record_type']=='FACT_STATEMENT': facts.append(row)
+        elif record['record_type']=='RELATION_STATEMENT': relations.append(row)
+        elif record['record_type']=='LINEAGE_STATEMENT': lineage.append(row)
+        elif record['record_type']=='METHOD_EVIDENCE': methods.append(row)
+        else: raise RuntimeError('UNKNOWN_FACT_RECORD_TYPE:'+str(record['record_type']))
+    selected=[
+        {
+            '类别':category,
+            '选中对象':item['stable_id'],
+            '排序元组':canonical(item.get('metrics',{}).get('sorting_tuple')),
+            '边界':item.get('relationship_boundary') or item.get('relation_boundary') or item.get('selection_or_rejection_reason'),
+        }
+        for category,item in sample_manifest['selected_by_category'].items()
+    ]
+    overview=[
+        {'项目':'合同ID','结果':contract_id},
+        {'项目':'事实底座记录数','结果':len(records)},
+        {'项目':'事实记录','结果':len(facts)},
+        {'项目':'关系记录','结果':len(relations)},
+        {'项目':'来源链记录','结果':len(lineage)},
+        {'项目':'方法记录','结果':len(methods)},
+        {'项目':'事实底座SHA-256','结果':None},
+        {'项目':'正式采用状态','结果':'尚未正式采用'},
+        {'项目':'136笔构建状态','结果':'未开始'},
+        {'项目':'三项真实重算','结果':'未授权、未运行'},
+    ]
+    sources=[
+        {
+            'S3INPUT':item['input_id'],
+            '对象序号':item['selected_object_index'],
+            '来源路径':item['source_path'],
+            '父文件SHA-256':item['actual_sha256'],
+            '选择器':item['normalized_selector'],
+            '装载数量':item['actual_count'],
+            '抽取SHA-256':item['extracted_content_sha256'],
+            '状态':item['load_status'],
+            '不能证明':item['cannot_prove'],
+        }
+        for item in receipts
+    ]
+    return {
+        '核对总览':overview,
+        '样本选择':selected,
+        '事实明细':facts,
+        '关系明细':relations,
+        '来源链':lineage,
+        '方法与边界':methods,
+        '输入来源与限制':sources,
+    }
+
+def workbook_display_content(payload, workbook_config):
+    category_labels=workbook_config['category_labels']
+    sheets=[]
+    for name in workbook_config['sheet_order']:
+        headers=workbook_config['preferred_columns'][name]
+        rows=[]
+        for source_row in payload[name]:
+            row=[]
+            for header in headers:
+                value=source_row.get(header)
+                if value is None:
+                    value=''
+                elif isinstance(value,(dict,list)):
+                    value=canonical(value)
+                if header in {'类别','样本类别'} and isinstance(value,str):
+                    for technical,plain in category_labels.items():
+                        value=value.replace(technical,plain)
+                row.append(value)
+            rows.append(row)
+        sheets.append({'sheet_name':name,'headers':headers,'rows':rows})
+    return sheets
+
+WORKBOOK_RENDERER=r'''
+import fs from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+const [artifactModulePath,payloadPath,outputPath,previewDir,viewConfigPath] = process.argv.slice(2);
+const { FileBlob, SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactModulePath).href);
+const payload=JSON.parse(await fs.readFile(payloadPath,"utf8"));
+const cfg=JSON.parse(await fs.readFile(viewConfigPath,"utf8"));
+const workbook=Workbook.create();
+const sheetOrder=cfg.sheet_order;
+const preferredColumns=cfg.preferred_columns;
+const categoryLabels=cfg.category_labels;
+
+function colLabel(index) {
+  let n=index+1,out="";
+  while (n>0) {
+    const rem=(n-1)%26;
+    out=String.fromCharCode(65+rem)+out;
+    n=Math.floor((n-1)/26);
+  }
+  return out;
+}
+function normalizedValue(value) {
+  if (value===null || value===undefined) return "";
+  if (typeof value==="object") return JSON.stringify(value);
+  return value;
+}
+function displayValue(header,value) {
+  const normalized=normalizedValue(value);
+  if (!["类别","样本类别"].includes(header) || typeof normalized!=="string") return normalized;
+  let display=normalized;
+  for (const [technical,plain] of Object.entries(categoryLabels)) display=display.split(technical).join(plain);
+  return display;
+}
+function widthFor(header) {
+  if (header==="原始记录JSON") return 90;
+  if (["能证明","不能证明","边界","结果"].includes(header)) return 42;
+  if (header==="来源路径") return 72;
+  if (header==="选择器") return 65;
+  if (["类别","排序元组"].includes(header)) return 40;
+  if (header.includes("ID") || header.includes("SHA")) return 30;
+  if (header.includes("时间")) return 24;
+  if (header.includes("来源") || header.includes("对象")) return 25;
+  return Math.max(14,Math.min(28,String(header).length*2+4));
+}
+function tableRows(sheet) {
+  const values=sheet.getUsedRange().values;
+  if (!Array.isArray(values) || values.length<3) throw new Error(`工作表 ${sheet.name} 无法读取`);
+  const headers=values[2].map(String);
+  const rows=values.slice(3)
+    .filter(row=>row.some(value=>value!=="" && value!==null))
+    .map(row=>row.map(normalizedValue));
+  return {headers,rows};
+}
+
+await fs.mkdir(path.dirname(outputPath),{recursive:true});
+await fs.mkdir(previewDir,{recursive:true});
+for (let sheetIndex=0;sheetIndex<sheetOrder.length;sheetIndex+=1) {
+  const name=sheetOrder[sheetIndex];
+  const rows=payload[name]||[];
+  if (rows.length===0) throw new Error(`工作表 ${name} 没有数据`);
+  const headers=preferredColumns[name];
+  const matrix=rows.map(row=>headers.map(header=>displayValue(header,row[header])));
+  const sheet=workbook.worksheets.add(name);
+  sheet.showGridLines=false;
+  sheet.tabColor=cfg.tab_colors[sheetIndex];
+  const lastCol=colLabel(headers.length-1);
+  const lastRow=rows.length+3;
+  sheet.mergeCells(`A1:${lastCol}1`);
+  sheet.getRange("A1").values=[[`第一工作包·${name}`]];
+  sheet.getRange(`A1:${lastCol}1`).format={fill:"#17365D",font:{name:cfg.font_family,size:16,bold:true,color:"#FFFFFF"},verticalAlignment:"center"};
+  sheet.getRange(`A1:${lastCol}1`).format.rowHeight=30;
+  sheet.mergeCells(`A2:${lastCol}2`);
+  sheet.getRange("A2").values=[[cfg.subtitles[name]]];
+  sheet.getRange(`A2:${lastCol}2`).format={fill:"#DCE6F1",font:{name:cfg.font_family,size:10,color:"#334155"},wrapText:true,verticalAlignment:"center"};
+  sheet.getRange(`A2:${lastCol}2`).format.rowHeight=34;
+  sheet.getRange(`A3:${lastCol}3`).values=[headers];
+  sheet.getRange(`A3:${lastCol}3`).format={fill:"#2F75B5",font:{name:cfg.font_family,size:10,bold:true,color:"#FFFFFF"},wrapText:true,verticalAlignment:"center",borders:{preset:"all",style:"thin",color:"#B4C6E7"}};
+  sheet.getRange(`A3:${lastCol}3`).format.rowHeight=36;
+  sheet.getRange(`A4:${lastCol}${lastRow}`).values=matrix;
+  sheet.getRange(`A4:${lastCol}${lastRow}`).format={font:{name:cfg.font_family,size:9,color:"#1F2937"},wrapText:true,verticalAlignment:"top",borders:{preset:"all",style:"thin",color:"#D9E2F3"}};
+  sheet.getRange(`A4:${lastCol}${lastRow}`).format.rowHeight=42;
+  for (let column=0;column<headers.length;column+=1) sheet.getRange(`${colLabel(column)}1:${colLabel(column)}${lastRow}`).format.columnWidth=widthFor(headers[column]);
+  const table=sheet.tables.add(`A3:${lastCol}${lastRow}`,true,`Pkg1Table${String(sheetIndex+1).padStart(2,"0")}`);
+  table.style=sheetIndex%2===0?"TableStyleMedium2":"TableStyleMedium4";
+  table.showHeaders=true;
+  table.showBandedColumns=false;
+  table.showFilterButton=true;
+  sheet.freezePanes.freezeRows(3);
+  if (headers.length>5) sheet.freezePanes.freezeColumns(2);
+  if (headers.includes("证据状态")) {
+    const statusCol=colLabel(headers.indexOf("证据状态"));
+    sheet.getRange(`${statusCol}4:${statusCol}${lastRow}`).conditionalFormats.add("containsText",{text:"UNKNOWN",format:{fill:"#FFF2CC",font:{color:"#9C5700",bold:true}}});
+  }
+}
+workbook.recalculate();
+for (const name of sheetOrder) {
+  const headers=preferredColumns[name];
+  const lastCol=colLabel(headers.length-1);
+  const renderLastRow=Math.min(payload[name].length+3,24);
+  const preview=await workbook.render({sheetName:name,range:`A1:${lastCol}${renderLastRow}`,scale:0.8,format:"png"});
+  await fs.writeFile(path.join(previewDir,`${String(sheetOrder.indexOf(name)+1).padStart(2,"0")}_${name}.png`),new Uint8Array(await preview.arrayBuffer()));
+}
+const exported=await SpreadsheetFile.exportXlsx(workbook);
+await exported.save(outputPath);
+const imported=await SpreadsheetFile.importXlsx(await FileBlob.load(outputPath));
+const actualSheets=imported.worksheets.items.map(sheet=>sheet.name);
+const sheetChecks={};
+const errorTokens=new Set(["#REF!","#DIV/0!","#VALUE!","#NAME?","#N/A","#NUM!","#NULL!","#SPILL!","#CALC!"]);
+let formulaErrorCount=0;
+for (const name of sheetOrder) {
+  const sheet=imported.worksheets.getItem(name);
+  const {headers,rows}=tableRows(sheet);
+  const expectedHeaders=preferredColumns[name];
+  const expectedRows=payload[name].map(row=>expectedHeaders.map(header=>displayValue(header,row[header])));
+  formulaErrorCount+=sheet.getUsedRange().values.flat().filter(value=>errorTokens.has(String(value))).length;
+  let firstDifference=null;
+  for (let rowIndex=0;rowIndex<Math.min(rows.length,expectedRows.length) && firstDifference===null;rowIndex+=1) {
+    for (let columnIndex=0;columnIndex<expectedHeaders.length;columnIndex+=1) {
+      if (JSON.stringify(rows[rowIndex][columnIndex])!==JSON.stringify(expectedRows[rowIndex][columnIndex])) {
+        firstDifference={
+          row_index:rowIndex,
+          column:expectedHeaders[columnIndex],
+          actual:String(rows[rowIndex][columnIndex]).slice(0,300),
+          expected:String(expectedRows[rowIndex][columnIndex]).slice(0,300),
+          actual_length:String(rows[rowIndex][columnIndex]).length,
+          expected_length:String(expectedRows[rowIndex][columnIndex]).length,
+        };
+        break;
+      }
+    }
+  }
+  sheetChecks[name]={
+    headers_exact:JSON.stringify(headers)===JSON.stringify(expectedHeaders),
+    row_count_expected:expectedRows.length,
+    row_count_actual:rows.length,
+    all_display_values_exact:JSON.stringify(rows)===JSON.stringify(expectedRows),
+    first_difference:firstDifference,
+  };
+}
+const result={
+  all_pass:JSON.stringify(actualSheets)===JSON.stringify(sheetOrder)
+    && Object.values(sheetChecks).every(item=>item.headers_exact && item.row_count_expected===item.row_count_actual && item.all_display_values_exact)
+    && formulaErrorCount===0,
+  sheet_order_exact:JSON.stringify(actualSheets)===JSON.stringify(sheetOrder),
+  sheet_checks:sheetChecks,
+  formula_error_count:formulaErrorCount,
+};
+console.log(JSON.stringify(result));
+if (!result.all_pass) process.exit(2);
+'''
+
+def build_views(config_path, output_dir=None, preview_dir=None, verification_output=None):
+    config_path=Path(config_path).resolve()
+    config=json.load(open(config_path,encoding='utf-8'))
+    view=config['view_generation']
+    base_dir=config_path.parent
+    inputs=view['inputs']
+    fact_path=base_dir/inputs['fact_base']['file']
+    sample_path=base_dir/inputs['sample_manifest']['file']
+    receipts_path=base_dir/inputs['input_receipts']['file']
+    verify_file_identity(fact_path,inputs['fact_base'],'fact_base')
+    verify_file_identity(sample_path,inputs['sample_manifest'],'sample_manifest')
+    verify_file_identity(receipts_path,inputs['input_receipts'],'input_receipts')
+    records=read_jsonl(fact_path)
+    sample_manifest=json.load(open(sample_path,encoding='utf-8'))
+    receipts=read_jsonl(receipts_path)
+    expected=view['verification']
+    counts=Counter(record['record_type'] for record in records)
+    if len(records)!=expected['record_count'] or dict(counts)!=expected['record_type_counts']:
+        raise RuntimeError('VIEW_FACT_BASE_COUNT_MISMATCH')
+    if len(sample_manifest['selected_by_category'])!=expected['sample_category_count']:
+        raise RuntimeError('VIEW_SAMPLE_CATEGORY_COUNT_MISMATCH')
+    if len(receipts)!=expected['input_receipt_count']:
+        raise RuntimeError('VIEW_INPUT_RECEIPT_COUNT_MISMATCH')
+    target_dir=Path(output_dir).resolve() if output_dir else base_dir
+    target_dir.mkdir(parents=True,exist_ok=True)
+    ai_output=target_dir/view['outputs']['ai_view']
+    workbook_output=target_dir/view['outputs']['user_workbook']
+    if ai_output==workbook_output: raise RuntimeError('VIEW_OUTPUT_PATH_COLLISION')
+    ai_text=build_ai_view_text(records,fact_path,sample_manifest,view)
+    if ai_view_records(ai_text)!=records: raise RuntimeError('AI_VIEW_FACT_RECONCILIATION_FAILED')
+    payload=build_workbook_payload(records,sample_manifest,receipts,config['contract_id'])
+    for item in payload['核对总览']:
+        if item['项目']=='事实底座SHA-256': item['结果']=sha_file(fact_path)
+    runtime=view['user_workbook']['runtime']
+    node=Path(runtime['node_executable'])
+    module=Path(runtime['artifact_tool_module'])
+    if not node.is_file() or subprocess.run([str(node),'--version'],check=True,text=True,capture_output=True).stdout.strip()!=runtime['node_version']:
+        raise RuntimeError('NODE_RUNTIME_IDENTITY_MISMATCH')
+    verify_file_identity(module,{'bytes':runtime['artifact_tool_module_bytes'],'sha256':runtime['artifact_tool_module_sha256']},'artifact_tool_module')
+    with tempfile.TemporaryDirectory(prefix='.view-build-',dir=target_dir) as temp_name:
+        temp=Path(temp_name)
+        ai_temp=temp/'ai.md'
+        workbook_temp=temp/'user.xlsx'
+        payload_path=temp/'workbook_payload.json'
+        view_config_path=temp/'workbook_view_config.json'
+        actual_preview_dir=Path(preview_dir).resolve() if preview_dir else temp/'previews'
+        ai_temp.write_text(ai_text,encoding='utf-8',newline='\n')
+        json_write(payload_path,payload)
+        json_write(view_config_path,view['user_workbook'])
+        node_result=subprocess.run(
+            [str(node),'--input-type=module','-',str(module),str(payload_path),str(workbook_temp),str(actual_preview_dir),str(view_config_path)],
+            input=WORKBOOK_RENDERER,
+            text=True,
+            capture_output=True,
+        )
+        if node_result.returncode!=0:
+            raise RuntimeError(
+                'USER_WORKBOOK_GENERATION_FAILED:'
+                + canonical({
+                    'returncode':node_result.returncode,
+                    'stdout_tail':node_result.stdout[-4000:],
+                    'stderr_tail':node_result.stderr[-4000:],
+                })
+            )
+        stdout_lines=[line for line in node_result.stdout.splitlines() if line.strip()]
+        if not stdout_lines:
+            raise RuntimeError('USER_WORKBOOK_VERIFICATION_OUTPUT_MISSING')
+        workbook_check=json.loads(stdout_lines[-1])
+        if not workbook_check['all_pass']:
+            raise RuntimeError('USER_WORKBOOK_RECONCILIATION_FAILED')
+        os.replace(ai_temp,ai_output)
+        os.replace(workbook_temp,workbook_output)
+    result={
+        'all_pass':True,
+        'source_fact_base':str(fact_path),
+        'fact_base_record_count':len(records),
+        'fact_base_sha256':sha_file(fact_path),
+        'view_content_sha256':hashlib.sha256(canonical(workbook_display_content(payload,view['user_workbook'])).encode('utf-8')).hexdigest(),
+        'ai_view':{'path':str(ai_output),'bytes':ai_output.stat().st_size,'sha256':sha_file(ai_output),'record_order_exact':True},
+        'user_workbook':{'path':str(workbook_output),'bytes':workbook_output.stat().st_size,'sha256':sha_file(workbook_output),**workbook_check},
+        'one_command':view['command'],
+    }
+    if verification_output:
+        json_write(Path(verification_output),result)
+    print(canonical(result))
+
 def run_tests(test_path):
     tests=[json.loads(x) for x in open(test_path,encoding='utf-8') if x.strip()]; out=[]
     for t in tests:
@@ -276,8 +655,10 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(); sub=p.add_subparsers(dest='cmd',required=True)
     l=sub.add_parser('load-selected-objects'); l.add_argument('--receipts',required=True); l.add_argument('--output-dir',required=True)
     b=sub.add_parser('build-bounded'); b.add_argument('--config',required=True); b.add_argument('--samples',required=True); b.add_argument('--output',required=True)
+    v=sub.add_parser('build-views'); v.add_argument('--config',required=True); v.add_argument('--output-dir'); v.add_argument('--preview-dir'); v.add_argument('--verification-output')
     t=sub.add_parser('self-test'); t.add_argument('--tests',required=True)
     a=p.parse_args()
     if a.cmd=='load-selected-objects': load_selected_objects(a.receipts,a.output_dir)
     elif a.cmd=='build-bounded': build(a.config,a.samples,a.output)
+    elif a.cmd=='build-views': build_views(a.config,a.output_dir,a.preview_dir,a.verification_output)
     else: run_tests(a.tests)

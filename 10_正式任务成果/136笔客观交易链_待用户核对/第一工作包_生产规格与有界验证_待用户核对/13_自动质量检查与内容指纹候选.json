@@ -2,8 +2,8 @@
   "record_type": "FIRST_PACKAGE_AUTOMATED_QA_AND_FINGERPRINT_CANDIDATE",
   "contract_id": "CTR-136-PKG1-PREP-f683d59ec39b",
   "status": "FIRST_PACKAGE_COMPLETION_CANDIDATE_PENDING_CHAT_AND_USER_REVIEW",
-  "generated_on": "2026-09-11",
-  "scope_statement": "本文件只记录第一工作包候选的自动质量检查、表示对账和内容指纹；不表示四十四项已正式采用，不表示三项真实重新计算已运行，不表示136笔客观交易链已建立。",
+  "generated_on": "2026-09-12",
+  "scope_statement": "本文件只记录第一工作包候选的自动质量检查、正式程序双版本重建、表示对账和内容指纹；不表示四十四项已正式采用，不表示三项真实重新计算已运行，不表示136笔客观交易链已建立。",
   "fixed_identities": {
     "formal_base_commit": "e57aa7eefac1bf0b8fe015345c7f0b42a8892597",
     "contract_sha256": "f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca",
@@ -19,14 +19,44 @@
     },
     "runtime_metadata": {
       "definition": "对固定运行环境元数据按UTF-8、键名排序、无多余空格的JSON序列化后计算SHA-256。",
-      "canonical_value": "{\"architecture\":\"arm64\",\"branch\":\"review/136-chain-production-prep-validation-restart-20260911\",\"contract_id\":\"CTR-136-PKG1-PREP-f683d59ec39b\",\"git\":\"2.39.5 (Apple Git-154)\",\"kernel\":\"24.3.0\",\"os\":\"Darwin\",\"python\":\"3.14.3\",\"python_implementation\":\"CPython\"}",
-      "sha256": "6e906d3e5388edb92ccfef91c989ee70d101efe6604a19d8e78ad4ebfa142b68"
+      "canonical_value": "{\"architecture\":\"arm64\",\"artifact_tool\":\"2.8.59\",\"artifact_tool_module_bytes\":11489310,\"artifact_tool_module_sha256\":\"d23c29992898aaf6efc0f78611ee34ba213579fa25e05ad4dc5dbcb356c11a89\",\"branch\":\"review/136-chain-production-prep-validation-restart-20260911\",\"contract_id\":\"CTR-136-PKG1-PREP-f683d59ec39b\",\"git\":\"2.39.5 (Apple Git-154)\",\"kernel\":\"24.3.0\",\"node\":\"v24.19.0\",\"os\":\"Darwin\",\"python\":\"3.14.3\",\"python_implementation\":\"CPython\"}",
+      "sha256": "0971689f95f2f599d804d1aa42f4614fc25e218dc0367885e8aca9ddf5014113"
     },
     "other_fourteen_candidate_files_manifest": {
       "definition": "除本质量检查文件自身以外，另外十四份候选的文件名、字节数和SHA-256清单按文件名排序后规范化序列化。",
-      "sha256": "22b5fab347d0f7dbade863bce8f71e64e72961732e1b68c58c48525315487ce2",
+      "sha256": "9894c7720c42d33592891a526252f370db22da70016ef1e30f1411f43b3cb230",
       "self_exclusion_reason": "文件无法把自身最终SHA-256写进自身而不形成循环，因此本清单明确排除本文件自身；本文件最终身份由Git固定提交保存。"
     }
+  },
+  "view_generation_reconciliation": {
+    "formal_program": "06_构建与确定性装载程序候选.py",
+    "formal_config": "07_构建配置_依赖与运行环境锁定候选.json",
+    "one_command": "python3 06_构建与确定性装载程序候选.py build-views --config 07_构建配置_依赖与运行环境锁定候选.json",
+    "source_fact_base": "10_有界测试事实底座候选.jsonl",
+    "source_fact_base_sha256": "8c065227f19d0bb9eea2d096fd5f27dd2425069ce7e49562442f833871a5605f",
+    "source_record_count": 3896,
+    "ai_view": {
+      "file": "11_AI读取测试版候选.md",
+      "bytes": 7481791,
+      "sha256": "4db3325a4eca49e392138c843b1030bd70709841ccaab1d942517e74e59f3325",
+      "all_source_records_and_order_exact": true,
+      "repeat_byte_identical": true
+    },
+    "user_workbook": {
+      "file": "12_用户核对测试版候选.xlsx",
+      "bytes": 550985,
+      "sha256": "eec3d67f9188b11816f82ee6b903acf040c1bbb60baeb1c8a3865f2f0428dd1c",
+      "sheet_count": 7,
+      "all_headers_rows_and_display_values_exact": true,
+      "formula_error_count": 0,
+      "content_sha256": "39a2bdd5887cfab5ae935e446a47b2768251407ef88e99a989162caf981c2910",
+      "repeat_content_identical": true,
+      "container_byte_identity_required": false,
+      "container_byte_identity_note": "表格工具每次可以生成不同的内部关系编号；是否同源由七张工作表的全部显示内容、顺序、数量和稳定内容指纹判断，不把整个压缩容器逐字节相同冒充为业务要求。"
+    },
+    "independent_temporary_rebuild_count": 2,
+    "candidate_outputs_regenerated_by_formal_command": true,
+    "temporary_generator_required_for_future_rebuild": false
   },
   "sample_reselection": {
     "user_instruction": "不使用这份额外的汇总表，只用原来允许的八份文件，重新选择和排列测试样本。",
@@ -243,13 +273,15 @@
     },
     {
       "check_id": "QA-028",
-      "name": "人工智能读取版完整保存与事实底座相同的三千八百九十六条记录和顺序",
-      "status": "PASS"
+      "name": "正式候选程序和配置可用一条命令从事实底座重建人工智能读取版；三千八百九十六条记录和顺序完全一致",
+      "status": "PASS",
+      "content_sha256": "4db3325a4eca49e392138c843b1030bd70709841ccaab1d942517e74e59f3325"
     },
     {
       "check_id": "QA-029",
-      "name": "用户核对表格的四类事实ID、数量和顺序与事实底座完全一致",
-      "status": "PASS"
+      "name": "正式候选程序和配置可用同一条命令从事实底座重建用户核对表格；四类事实ID、全部表头、显示值、数量和顺序完全一致",
+      "status": "PASS",
+      "workbook_content_sha256": "39a2bdd5887cfab5ae935e446a47b2768251407ef88e99a989162caf981c2910"
     },
     {
       "check_id": "QA-030",
@@ -263,7 +295,7 @@
     },
     {
       "check_id": "QA-032",
-      "name": "用户核对表格的总览、样本、事实和输入来源代表页面已经实际渲染检查",
+      "name": "用户核对表格的七张工作表均已实际渲染检查",
       "status": "PASS"
     },
     {
@@ -290,8 +322,8 @@
   "candidate_manifest_excluding_self": [
     {
       "name": "00_第一工作包用户白话说明与执行回执_待用户核对.md",
-      "bytes": 7127,
-      "sha256": "55bf2826ed89be0499d147d2700c91c1b4f44d4ee468f5427fa0ebdaf3affbe1"
+      "bytes": 8784,
+      "sha256": "758cc1e6879838f8397e4d5d156046c17bae0476d1c81ca836882b0002da6cd8"
     },
     {
       "name": "01_四十四项采用清单候选.jsonl",
@@ -320,13 +352,13 @@
     },
     {
       "name": "06_构建与确定性装载程序候选.py",
-      "bytes": 20769,
-      "sha256": "9199616a78ebc58d2266b2d96361a12321dbf3647d202de1176a03ebe149c818"
+      "bytes": 40194,
+      "sha256": "633f5e5bcd51b5f60ff6431eadebcc494815da9c6b983333b0a666c60be6cd11"
     },
     {
       "name": "07_构建配置_依赖与运行环境锁定候选.json",
-      "bytes": 9567,
-      "sha256": "2333e1ad3f6efd2f4f14b63468a6eb78a5038523a3435cf922a871e1934180ba"
+      "bytes": 16174,
+      "sha256": "a5fc77a6a194917e25c4b6be24f5fcf82b606772557f5bfeb1526dcdaf49fbcc"
     },
     {
       "name": "08_最小程序测试与预期结果候选.jsonl",
@@ -350,13 +382,13 @@
     },
     {
       "name": "12_用户核对测试版候选.xlsx",
-      "bytes": 550992,
-      "sha256": "ca03819e04111f62be8420424a543f9fc2ba7a5a1fe38f752533df70e0d3baf0"
+      "bytes": 550985,
+      "sha256": "eec3d67f9188b11816f82ee6b903acf040c1bbb60baeb1c8a3865f2f0428dd1c"
     },
     {
       "name": "14_用户白话检查说明与04B对应回执_待用户核对.md",
-      "bytes": 7499,
-      "sha256": "64c4b94930188719d84e07511f780eec8946a4ffb019c23983ec278d8e1e15ea"
+      "bytes": 7788,
+      "sha256": "771d5233457a3ed2057f9032db318bdd422ef88c9fab86b827e6e1350833365d"
     }
   ],
   "final_boundaries": {

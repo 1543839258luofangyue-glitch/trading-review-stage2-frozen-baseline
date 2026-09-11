@@ -120,6 +120,176 @@
     "standard_library_only_for_candidate_program": true,
     "version": "3.14.3"
   },
+  "view_generation": {
+    "ai_view": {
+      "body_note": "以下每条都保留唯一`fact_id`和完整原始记录。每250条建立一个连续分块；分块只改变导航，不改变事实。",
+      "boundary": "边界：只覆盖样本清单选中的有界对象；不代表136笔已经构建，不代表任何候选已正式采用。",
+      "chunk_size": 250,
+      "closing_boundaries": [
+        "所有记录均可凭`fact_id`回到事实底座。",
+        "候选、UNKNOWN、区间、方法和来源链没有被升级为确定交易所事实。",
+        "稳定展示顺序只用于连续读取，不代表真实因果先后。"
+      ],
+      "identity": "身份：由`10_有界测试事实底座候选.jsonl`自动生成的测试表示，不是第二套事实。",
+      "title": "# 第一工作包｜人工智能连续读取测试版（待用户核对）"
+    },
+    "command": "python3 06_构建与确定性装载程序候选.py build-views --config 07_构建配置_依赖与运行环境锁定候选.json",
+    "inputs": {
+      "fact_base": {
+        "bytes": 7476422,
+        "file": "10_有界测试事实底座候选.jsonl",
+        "sha256": "8c065227f19d0bb9eea2d096fd5f27dd2425069ce7e49562442f833871a5605f"
+      },
+      "input_receipts": {
+        "bytes": 177415,
+        "file": "02_输入身份_选择器与装载回执候选.jsonl",
+        "sha256": "a8a3e21a19fe5a72733b94b0837d50a8f1ed699fc95205adf626bbc26a77022f"
+      },
+      "sample_manifest": {
+        "bytes": 413811,
+        "file": "09_有界验证样本清单候选.json",
+        "sha256": "9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"
+      }
+    },
+    "outputs": {
+      "ai_view": "11_AI读取测试版候选.md",
+      "user_workbook": "12_用户核对测试版候选.xlsx"
+    },
+    "user_workbook": {
+      "category_labels": {
+        "1_multiple_open_or_add_attempts_cancel_and_replacement": "1．多次开仓或加仓尝试、撤单和替换",
+        "2_stop_takeprofit_evolution_and_candidate_relation": "2．止损止盈演变与候选关系",
+        "3_t087_two_lawful_paths_and_outer_envelope": "3．T087同秒两条合法路径及外包络",
+        "4_external_fund_or_shared_account_impact": "4．外部资金或共享账户影响",
+        "5_adjacent_trades_and_unassigned_condition": "5．相邻交易与无法可靠归属的条件对象",
+        "6_copy_trading_effect_object": "6．跟单影响对象",
+        "7_partial_fill_reduce_close_and_continuity": "7．部分成交、减仓、平仓与仓位连续性",
+        "8_conflict_interval_multiple_candidates_or_unknown": "8．冲突、区间、多个候选或未知",
+        "9_long_object_chunk_continuity_and_two_views": "9．长对象、分块连续读取与两个同源视图"
+      },
+      "font_family": "Microsoft YaHei",
+      "preferred_columns": {
+        "事实明细": [
+          "事实ID",
+          "记录类型",
+          "对象ID",
+          "来源事件ID",
+          "来源表",
+          "来源行",
+          "原始时间",
+          "样本类别",
+          "证据状态",
+          "能证明",
+          "不能证明",
+          "原始记录JSON"
+        ],
+        "关系明细": [
+          "事实ID",
+          "记录类型",
+          "对象ID",
+          "来源事件ID",
+          "来源表",
+          "来源行",
+          "原始时间",
+          "样本类别",
+          "证据状态",
+          "能证明",
+          "不能证明",
+          "原始记录JSON"
+        ],
+        "方法与边界": [
+          "事实ID",
+          "记录类型",
+          "对象ID",
+          "证据状态",
+          "能证明",
+          "不能证明",
+          "原始记录JSON"
+        ],
+        "来源链": [
+          "事实ID",
+          "记录类型",
+          "对象ID",
+          "来源事件ID",
+          "来源表",
+          "来源行",
+          "原始时间",
+          "样本类别",
+          "证据状态",
+          "能证明",
+          "不能证明",
+          "原始记录JSON"
+        ],
+        "样本选择": [
+          "类别",
+          "选中对象",
+          "排序元组",
+          "边界"
+        ],
+        "核对总览": [
+          "项目",
+          "结果"
+        ],
+        "输入来源与限制": [
+          "S3INPUT",
+          "对象序号",
+          "状态",
+          "来源路径",
+          "父文件SHA-256",
+          "选择器",
+          "装载数量",
+          "抽取SHA-256",
+          "不能证明"
+        ]
+      },
+      "runtime": {
+        "artifact_tool_module": "/Users/luodaluo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs",
+        "artifact_tool_module_bytes": 11489310,
+        "artifact_tool_module_sha256": "d23c29992898aaf6efc0f78611ee34ba213579fa25e05ad4dc5dbcb356c11a89",
+        "artifact_tool_package_version": "2.8.59",
+        "node_executable": "/Users/luodaluo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "node_version": "v24.19.0"
+      },
+      "sheet_order": [
+        "核对总览",
+        "样本选择",
+        "事实明细",
+        "关系明细",
+        "来源链",
+        "方法与边界",
+        "输入来源与限制"
+      ],
+      "subtitles": {
+        "事实明细": "来自八份原始事件文件的有界样本事实；原值以字符串保留。",
+        "关系明细": "只保留固定证据中已有的直接、候选或上下文关系，不自动升级。",
+        "方法与边界": "保留 T087 两条合法路径及外包络等方法证据，不写成唯一真实顺序。",
+        "来源链": "显示样本事件的来源路径和变换边界，不提高业务结论等级。",
+        "样本选择": "九类测试情形的候选池排序结果与最终选中对象。",
+        "核对总览": "只用合同允许的八份原始事件文件重新选样；额外汇总表已排除。",
+        "输入来源与限制": "固定输入、选择器、抽取数量和证明边界；仅用于本次有界验证。"
+      },
+      "tab_colors": [
+        "#1D4ED8",
+        "#0F766E",
+        "#2563EB",
+        "#7C3AED",
+        "#B45309",
+        "#BE123C",
+        "#475569"
+      ]
+    },
+    "verification": {
+      "input_receipt_count": 74,
+      "record_count": 3896,
+      "record_type_counts": {
+        "FACT_STATEMENT": 1300,
+        "LINEAGE_STATEMENT": 1336,
+        "METHOD_EVIDENCE": 2,
+        "RELATION_STATEMENT": 1258
+      },
+      "sample_category_count": 9
+    }
+  },
   "record_type": "FIRST_PACKAGE_BUILD_CONFIGURATION",
   "selected_object_loader": {
     "command": "python3 06_构建与确定性装载程序候选.py load-selected-objects --receipts 02_输入身份_选择器与装载回执候选.jsonl --output-dir <空白的只读输入镜像区>",
