@@ -1,0 +1,138 @@
+{
+  "allowed_git_outputs": [
+    "04_任务与问题/04A_当前任务授权.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/00_生产准备与有界验证前置执行合同_用户确认版.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/00_第一工作包用户白话说明与执行回执_待用户核对.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/01_四十四项采用清单候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/02_输入身份_选择器与装载回执候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/03_字段关系组装与能力闭合表候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/04_数据结构与规范化规则候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/05_三项重新计算前置合同与依赖候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/06_构建与确定性装载程序候选.py",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/07_构建配置_依赖与运行环境锁定候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/08_最小程序测试与预期结果候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/09_有界验证样本清单候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/10_有界测试事实底座候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/11_AI读取测试版候选.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对测试版候选.xlsx",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/13_自动质量检查与内容指纹候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/14_用户白话检查说明与04B对应回执_待用户核对.md"
+  ],
+  "bounded_method_test_sources": [
+    {
+      "bytes": 6751,
+      "can_prove": "冻结方法声明唯一顺序未证明，并规定外包络。",
+      "cannot_prove": "不证明哪条路径是真实历史顺序，也不表示已执行新的真实重算。",
+      "object_id": "T087",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/00_WORK总控/24_账户权益重建专项/02_EQ-P2_固定10笔与全部关键动作节点账户权益计算/03_RW002_T087同秒边界纠偏/EQ_P2_RW002_CURRENT_EFFECTIVE_BASELINE.json",
+      "role": "T087_CURRENT_EFFECTIVE_METHOD_AND_OUTER_ENVELOPE",
+      "sample_categories": [
+        "3_t087_two_lawful_paths_and_outer_envelope",
+        "8_conflict_interval_multiple_candidates_or_unknown"
+      ],
+      "sha256": "65cc134fc56df13d8ad240bd64bca30d44f8b4f5ade0f999a6fe6ca115191fef"
+    },
+    {
+      "bytes": 4781,
+      "can_prove": "两行分别保存两条合法路径及其既有方法值。",
+      "cannot_prove": "旧值只供有界表示测试和方法回归，不作为本次新运行真值。",
+      "object_id": "T087",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/00_WORK总控/24_账户权益重建专项/02_EQ-P2_固定10笔与全部关键动作节点账户权益计算/03_RW002_T087同秒边界纠偏/EQ_P2_RW002_T087_LAWFUL_ORDER_VARIANTS.csv",
+      "role": "T087_TWO_LAWFUL_VARIANTS",
+      "sample_categories": [
+        "3_t087_two_lawful_paths_and_outer_envelope",
+        "8_conflict_interval_multiple_candidates_or_unknown"
+      ],
+      "sha256": "9e15f6fc03838f9ca9b4cbd83b411a24ae46330de508dfdb5b57ddbbcfebecb0"
+    }
+  ],
+  "bounded_sample_sources": {
+    "condition": {
+      "bytes": 588201,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_CONDITIONAL_ORDER_LIFECYCLE_EVENT.csv",
+      "sha256": "3718b0e443a86a58b7530ad26c5831dcc6b546c6d59110bf4a46fae1e8611068"
+    },
+    "copy": {
+      "bytes": 12960,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_COPY_FUNDS_ONLY_EVENT.csv",
+      "sha256": "37ed5ee0f7c34e34ee39bd33ef5c3430013e2e6ea6287f5e2574895f1c8c21a7"
+    },
+    "fill": {
+      "bytes": 6446600,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_FILL_EVENT.csv",
+      "sha256": "65dfb2874cb3490a5d9e12fce5565c6727c7cd1bc27ee13dd77045df6806fb71"
+    },
+    "fund": {
+      "bytes": 12630677,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_FUND_EVENT.csv",
+      "sha256": "69b9ce61a9659a47199d0b317905ea39445ed5ab0f1f0442b5f758e3763fa4aa"
+    },
+    "lineage": {
+      "bytes": 13305132,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINEAGE.csv",
+      "sha256": "dc741959d50d1ba57d54d0e372bc2f347682c64a52d5dda4d264a54e51fa1035"
+    },
+    "linkage": {
+      "bytes": 2805280,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINKAGE_MATRIX.csv",
+      "sha256": "e6cb7292ce1bff188722c741a0a2e0a2ad685e0317e270eaee612c115c4e6401"
+    },
+    "order": {
+      "bytes": 714696,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_ORDER_EVENT.csv",
+      "sha256": "07787358c6dbb7b2630cf5ff2ae6a0f49fd9e4c7305cb2a362d4e266cc8ac510"
+    },
+    "position": {
+      "bytes": 507818,
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_POSITION_ACTION_EVENT.csv",
+      "sha256": "2a0e7340593e7bf1db7ae54b52a31506160d9802eb35b4fd8dcfc476a3fecd77"
+    }
+  },
+  "branch": "review/136-chain-production-prep-validation-restart-20260911",
+  "clean_root": "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911",
+  "clean_root_regions": [
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/01_只读输入镜像区",
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/02_规则程序与配置区",
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/03_本次临时运行区",
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/04_待检查输出区"
+  ],
+  "contract_id": "CTR-136-PKG1-PREP-f683d59ec39b",
+  "contract_sha256": "f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca",
+  "forbidden_actions": [
+    "READ_EXTRA_SUMMARY",
+    "FULL_136_BUILD",
+    "REAL_RECOMPUTATION",
+    "FORMAL_ADOPTION",
+    "MODIFY_FROZEN_INPUT",
+    "MODIFY_04B",
+    "MERGE_MAIN"
+  ],
+  "forbidden_extra_sample_summary": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_UNIFIED_EVENT_EVIDENCE.csv",
+  "formal_base_commit": "e57aa7eefac1bf0b8fe015345c7f0b42a8892597",
+  "normalization": {
+    "encoding": "UTF-8",
+    "float_for_business_decimal": false,
+    "json_sort_keys": true,
+    "line_endings": "LF"
+  },
+  "python": {
+    "implementation": "CPython",
+    "standard_library_only_for_candidate_program": true,
+    "version": "3.14.3"
+  },
+  "record_type": "FIRST_PACKAGE_BUILD_CONFIGURATION",
+  "selected_object_loader": {
+    "command": "python3 06_构建与确定性装载程序候选.py load-selected-objects --receipts 02_输入身份_选择器与装载回执候选.jsonl --output-dir <空白的只读输入镜像区>",
+    "deterministic_checks": [
+      "父文件字节数和SHA-256必须与回执一致",
+      "选择器实际数量必须与回执一致",
+      "抽取后内容SHA-256必须与回执一致",
+      "输出目录必须为空，程序不删除或覆盖既有文件",
+      "装载完成后所有镜像文件设为只读"
+    ],
+    "receipt_file": "02_输入身份_选择器与装载回执候选.jsonl"
+  },
+  "selected_object_reference_count": 74,
+  "unique_source_path_count": 72,
+  "worktree": "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行隔离工作区_20260911"
+}

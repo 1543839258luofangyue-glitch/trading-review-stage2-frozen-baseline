@@ -1,0 +1,181 @@
+{
+  "candidate_set": {
+    "required": [
+      "candidate_ids",
+      "evidence_for_each",
+      "selection_status"
+    ],
+    "single_candidate_promotion_without_rule": false
+  },
+  "conflict": {
+    "empty_overwrites_value": false,
+    "last_write_wins": false,
+    "silent_overwrite": false,
+    "store_all_claims": true
+  },
+  "contract_id": "CTR-136-PKG1-PREP-f683d59ec39b",
+  "display_order": {
+    "key": [
+      "normalized_time",
+      "time_precision_rank",
+      "source_priority_for_display_only",
+      "event_type",
+      "stable_id"
+    ],
+    "warning": "稳定展示顺序不代表真实因果先后；同秒唯一先后没有证据时必须保留多路径或未知。"
+  },
+  "fingerprints": {
+    "business_content": "SHA-256 of canonical business records only",
+    "runtime_metadata": "separate SHA-256; never changes business fingerprint"
+  },
+  "information_layers": {
+    "ai_interpretation": [
+      "interpretation_id",
+      "input_fact_ids",
+      "text",
+      "status",
+      "not_a_fact"
+    ],
+    "computation_lifecycle": [
+      "contract_id",
+      "run_id",
+      "status",
+      "input_fingerprint",
+      "program_fingerprint",
+      "output_fingerprint"
+    ],
+    "conflict": [
+      "conflict_id",
+      "claim_fact_ids",
+      "nature",
+      "resolution_status"
+    ],
+    "fact_statement": [
+      "fact_id",
+      "object_id",
+      "raw_value",
+      "normalized_value",
+      "evidence_status",
+      "applicability_scope"
+    ],
+    "relation_statement": [
+      "relation_id",
+      "source_fact_id",
+      "target_fact_id",
+      "relation_type",
+      "evidence_status"
+    ],
+    "source_identity": [
+      "source_path",
+      "source_bytes",
+      "source_sha256",
+      "source_locator",
+      "selector"
+    ],
+    "user_statement": [
+      "statement_id",
+      "source_pointer",
+      "exact_text",
+      "scope",
+      "does_not_override_fact"
+    ]
+  },
+  "interval": {
+    "required": [
+      "lower",
+      "upper",
+      "lower_inclusive",
+      "upper_inclusive",
+      "method_id",
+      "precision",
+      "source_fact_ids"
+    ]
+  },
+  "not_applicable": {
+    "required": [
+      "scope",
+      "reason"
+    ]
+  },
+  "numbers": {
+    "binary_float_for_business_values": false,
+    "currency_required_for_money": true,
+    "storage": "decimal strings or integers as strings",
+    "unit_required_for_quantity": true
+  },
+  "proof_boundary": "规则固定表示和防错办法，不证明任何候选已正式采用，不证明136笔已经构建。",
+  "record_type": "FIRST_PACKAGE_DATA_AND_NORMALIZATION_RULES",
+  "schema_version": "1.0-candidate",
+  "serialization": {
+    "bom": false,
+    "encoding": "UTF-8",
+    "json_key_order": "lexicographic",
+    "json_separators": [
+      ",",
+      ":"
+    ],
+    "jsonl_trailing_lf": true,
+    "line_endings": "LF"
+  },
+  "stable_id_rules": {
+    "algorithm": "namespace + first24hex(SHA-256(namespace U+001F source_sha256 U+001F source_locator U+001F raw_business_key))",
+    "existing_ids_first": [
+      "trade_id",
+      "position_cycle_id",
+      "order_id",
+      "fill_reconstruction_id",
+      "condition_record_id",
+      "canonical_economic_event_id",
+      "event_id"
+    ],
+    "generated_only_when_missing": true,
+    "long_ids_are_strings": true
+  },
+  "statuses": {
+    "adoption": [
+      "NOT_FORMALLY_ADOPTED",
+      "ADOPTED_AFTER_USER_DECISION",
+      "REJECTED_AFTER_USER_DECISION"
+    ],
+    "evidence": [
+      "DIRECT",
+      "DETERMINISTIC_DERIVATION",
+      "BOUNDED",
+      "CANDIDATE",
+      "UNKNOWN",
+      "NOT_APPLICABLE",
+      "NOT_EVALUATED"
+    ],
+    "execution": [
+      "NOT_AUTHORIZED",
+      "AUTHORIZED_NOT_STARTED",
+      "RUNNING",
+      "BLOCKED",
+      "FAILED",
+      "COMPLETED",
+      "NOT_APPLICABLE"
+    ],
+    "rule": "证据状态、执行状态和采用状态互不替代。"
+  },
+  "time": {
+    "beijing_time_separate": true,
+    "normalized_utc_separate": true,
+    "precision_required": true,
+    "preserve_original_timezone": true,
+    "preserve_original_value": true
+  },
+  "unknown": {
+    "not_equal_to": [
+      "",
+      0,
+      false,
+      "未发生"
+    ],
+    "representation": {
+      "missing_evidence": "required",
+      "reason": "required",
+      "scope": "required",
+      "status": "UNKNOWN"
+    }
+  }
+}

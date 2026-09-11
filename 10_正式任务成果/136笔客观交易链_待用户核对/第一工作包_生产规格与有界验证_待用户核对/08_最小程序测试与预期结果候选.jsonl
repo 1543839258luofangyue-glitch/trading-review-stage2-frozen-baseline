@@ -1,0 +1,15 @@
+{"expected":"FACT-8e96c3e44fa0de0a87f4e94a","input":{"namespace":"FACT","raw_business_key":"922337203685477580812345","source_locator":"row:2","source_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"purpose":"同一输入稳定产生同一ID。","test_id":"T01_STABLE_ID_REPEATABLE","test_kind":"stable_id"}
+{"expected":"5047854660761803777","input":{"value":"5047854660761803777"},"purpose":"十九位ID不转成浮点数。","test_id":"T02_LONG_INTEGER_AS_STRING","test_kind":"preserve_value"}
+{"expected":"1129.9043806700","input":{"value":"1129.9043806700"},"purpose":"十进制字符串不丢精度。","test_id":"T03_DECIMAL_TRAILING_PRECISION","test_kind":"decimal_text"}
+{"expected":"-21.4273808","input":{"value":"-21.4273808"},"purpose":"负数和精度保留。","test_id":"T04_NEGATIVE_DECIMAL","test_kind":"decimal_text"}
+{"expected":"2026-06-08 06:20:08","input":{"value":"2026-06-08 06:20:08"},"purpose":"原始时间不被无声改写。","test_id":"T05_ORIGINAL_TIME","test_kind":"preserve_value"}
+{"expected":"Asia/Shanghai","input":{"value":"Asia/Shanghai"},"purpose":"时区显式保留。","test_id":"T06_TIMEZONE","test_kind":"preserve_value"}
+{"expected":{"currency":"USDT","unit":"asset_amount"},"input":{"value":{"currency":"USDT","unit":"asset_amount"}},"purpose":"币种和单位分开保存。","test_id":"T07_CURRENCY_UNIT","test_kind":"preserve_value"}
+{"expected":{"reason":"NO_DIRECT_SOURCE","status":"UNKNOWN"},"input":{"value":{"reason":"NO_DIRECT_SOURCE","status":"UNKNOWN"}},"purpose":"未知不变成空值或零。","test_id":"T08_UNKNOWN","test_kind":"preserve_value"}
+{"expected":{"lower":"0","lower_inclusive":true,"upper":"31.64911920","upper_inclusive":false},"input":{"value":{"lower":"0","lower_inclusive":true,"upper":"31.64911920","upper_inclusive":false}},"purpose":"区间不压成单值。","test_id":"T09_INTERVAL","test_kind":"preserve_value"}
+{"expected":["PATH_A","PATH_B"],"input":{"value":["PATH_A","PATH_B"]},"purpose":"多个合法候选不择一。","test_id":"T10_MULTIPLE_CANDIDATES","test_kind":"preserve_value"}
+{"expected":{"claims":["A","B"],"conflict_id":"CONFLICT-1","resolution":"UNRESOLVED"},"input":{"value":{"claims":["A","B"],"conflict_id":"CONFLICT-1","resolution":"UNRESOLVED"}},"purpose":"冲突不被最后写入覆盖。","test_id":"T11_CONFLICT","test_kind":"preserve_value"}
+{"expected":"{\"a\":1,\"b\":2}","input":{"value":{"a":1,"b":2}},"purpose":"键顺序不同仍得到同一规范形式。","test_id":"T12_CANONICAL_ORDER","test_kind":"canonical"}
+{"expected":true,"input":{"ai_ids":["REL-c","FACT-b","FACT-a"],"fact_base_ids":["FACT-a","FACT-b","REL-c"],"user_ids":["FACT-a","FACT-b","REL-c"]},"purpose":"两个表示都回到同一事实ID集合。","test_id":"T13_DUAL_VIEW_FACT_IDS","test_kind":"dual_view_ids"}
+{"expected":"{\"kind\":\"CSV_FULL_FILE_SUBOBJECT\"}","input":{"selector":{"kind":"CSV_FULL_FILE_SUBOBJECT"}},"purpose":"同一选择器能编译成唯一规范形式。","test_id":"T14_SELECTOR_COMPILE","test_kind":"selector_compile"}
+{"expected":{"row_count":12,"sha256":"37ed5ee0f7c34e34ee39bd33ef5c3430013e2e6ea6287f5e2574895f1c8c21a7"},"input":{"path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_COPY_FUNDS_ONLY_EVENT.csv"},"purpose":"用八份获准文件中最小的一份验证固定对象身份和装载数量可重复。","test_id":"T15_SELECTED_OBJECT_LOAD_REPEATABLE","test_kind":"selected_csv_load"}
