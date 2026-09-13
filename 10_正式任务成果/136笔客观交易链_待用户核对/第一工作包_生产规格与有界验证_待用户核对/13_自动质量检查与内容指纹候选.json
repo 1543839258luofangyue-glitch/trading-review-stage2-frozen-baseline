@@ -1,21 +1,50 @@
 {
-  "record_type": "FIRST_PACKAGE_AUTOMATED_QA_AND_FINGERPRINT_CANDIDATE",
+  "record_type": "FIRST_PACKAGE_LIMITED_CORRECTION_QA_AND_FINGERPRINT_CANDIDATE",
   "contract_id": "CTR-136-PKG1-PREP-f683d59ec39b",
-  "status": "FIRST_PACKAGE_COMPLETION_CANDIDATE_PENDING_CHAT_AND_USER_REVIEW",
-  "generated_on": "2026-09-12",
-  "scope_statement": "本文件只记录第一工作包候选的自动质量检查、正式程序双版本重建、表示对账和内容指纹；不表示四十四项已正式采用，不表示三项真实重新计算已运行，不表示136笔客观交易链已建立。",
+  "status": "TECHNICAL_CORRECTION_CANDIDATE_READY_FOR_FIXED_COMMIT_PENDING_NEW_WORK_REVIEW_AND_ACTUAL_USER_REVIEW",
+  "generated_on": "2026-09-13",
+  "scope_statement": "本文件只记录第一工作包有限修正候选的自动测试、重复生成、两个表示对账、可视检查和内容指纹。程序检查通过不等于另一个AI已经实际读懂，不等于用户已经看懂，不等于四十四项已正式采用，不等于三项真实重新计算已运行，也不等于136笔客观交易链已经建立。",
   "fixed_identities": {
     "formal_base_commit": "e57aa7eefac1bf0b8fe015345c7f0b42a8892597",
+    "failed_candidate_parent_commit_preserved": "5ace60d21ab562326bc286ffe99f5234136432a6",
     "contract_sha256": "f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca",
     "formal_plan_sha256": "bd74f8e9d1fe64a887052208d50fb07ff2632448bc24e920b35b8a811a0443fb",
     "formal_matrix_sha256": "b0f4765113d213bad902710e36ca41b1174a27405ae77a480b55d610759894f9",
     "stage3_machine_ledger_sha256": "d41694adfe54a0ba1a29d8ab66d991b31bc98635ccb295965eda8e5d5a4dcafa",
-    "all_match": true
+    "all_checked_identities_match": true
+  },
+  "limited_correction_scope": {
+    "modified_files": [
+      "00_第一工作包用户白话说明与执行回执_待用户核对.md",
+      "03_字段关系组装与能力闭合表候选.jsonl",
+      "06_构建与确定性装载程序候选.py",
+      "07_构建配置_依赖与运行环境锁定候选.json",
+      "08_最小程序测试与预期结果候选.jsonl",
+      "10_有界测试事实底座候选.jsonl",
+      "11_AI读取测试版候选.md",
+      "12_用户核对测试版候选.xlsx",
+      "13_自动质量检查与内容指纹候选.json",
+      "14_用户白话检查说明与04B对应回执_待用户核对.md",
+      "04_任务与问题/04A_当前任务授权.md"
+    ],
+    "conditionally_modifiable_but_not_triggered": [
+      "04_数据结构与规范化规则候选.json",
+      "05_三项重新计算前置合同与依赖候选.json"
+    ],
+    "package_files_verified_unchanged": [
+      "01_四十四项采用清单候选.jsonl",
+      "02_输入身份_选择器与装载回执候选.jsonl",
+      "04_数据结构与规范化规则候选.json",
+      "05_三项重新计算前置合同与依赖候选.json",
+      "09_有界验证样本清单候选.json"
+    ],
+    "formal_and_frozen_materials_modified": false
   },
   "fingerprints": {
     "business_content": {
-      "definition": "10_有界测试事实底座候选.jsonl的逐字节SHA-256；运行时间、路径和环境信息不参与。",
-      "sha256": "8c065227f19d0bb9eea2d096fd5f27dd2425069ce7e49562442f833871a5605f"
+      "definition": "对10_有界测试事实底座候选.jsonl整份文件逐字节计算SHA-256。文件内保存的来源路径属于证据记录，会参与指纹；额外的临时运行日志和环境回执不并入这份事实底座。",
+      "bytes": 19279441,
+      "sha256": "2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9"
     },
     "runtime_metadata": {
       "definition": "对固定运行环境元数据按UTF-8、键名排序、无多余空格的JSON序列化后计算SHA-256。",
@@ -24,85 +53,8 @@
     },
     "other_fourteen_candidate_files_manifest": {
       "definition": "除本质量检查文件自身以外，另外十四份候选的文件名、字节数和SHA-256清单按文件名排序后规范化序列化。",
-      "sha256": "9894c7720c42d33592891a526252f370db22da70016ef1e30f1411f43b3cb230",
-      "self_exclusion_reason": "文件无法把自身最终SHA-256写进自身而不形成循环，因此本清单明确排除本文件自身；本文件最终身份由Git固定提交保存。"
-    }
-  },
-  "view_generation_reconciliation": {
-    "formal_program": "06_构建与确定性装载程序候选.py",
-    "formal_config": "07_构建配置_依赖与运行环境锁定候选.json",
-    "one_command": "python3 06_构建与确定性装载程序候选.py build-views --config 07_构建配置_依赖与运行环境锁定候选.json",
-    "source_fact_base": "10_有界测试事实底座候选.jsonl",
-    "source_fact_base_sha256": "8c065227f19d0bb9eea2d096fd5f27dd2425069ce7e49562442f833871a5605f",
-    "source_record_count": 3896,
-    "ai_view": {
-      "file": "11_AI读取测试版候选.md",
-      "bytes": 7481791,
-      "sha256": "4db3325a4eca49e392138c843b1030bd70709841ccaab1d942517e74e59f3325",
-      "all_source_records_and_order_exact": true,
-      "repeat_byte_identical": true
-    },
-    "user_workbook": {
-      "file": "12_用户核对测试版候选.xlsx",
-      "bytes": 550985,
-      "sha256": "eec3d67f9188b11816f82ee6b903acf040c1bbb60baeb1c8a3865f2f0428dd1c",
-      "sheet_count": 7,
-      "all_headers_rows_and_display_values_exact": true,
-      "formula_error_count": 0,
-      "content_sha256": "39a2bdd5887cfab5ae935e446a47b2768251407ef88e99a989162caf981c2910",
-      "repeat_content_identical": true,
-      "container_byte_identity_required": false,
-      "container_byte_identity_note": "表格工具每次可以生成不同的内部关系编号；是否同源由七张工作表的全部显示内容、顺序、数量和稳定内容指纹判断，不把整个压缩容器逐字节相同冒充为业务要求。"
-    },
-    "independent_temporary_rebuild_count": 2,
-    "candidate_outputs_regenerated_by_formal_command": true,
-    "temporary_generator_required_for_future_rebuild": false
-  },
-  "sample_reselection": {
-    "user_instruction": "不使用这份额外的汇总表，只用原来允许的八份文件，重新选择和排列测试样本。",
-    "selection_source_policy": "ONLY_THE_EIGHT_ORIGINAL_S3INPUT_35_FILES",
-    "allowed_files": [
-      "K05_ORDER_EVENT.csv",
-      "K05_FILL_EVENT.csv",
-      "K05_POSITION_ACTION_EVENT.csv",
-      "K05_CONDITIONAL_ORDER_LIFECYCLE_EVENT.csv",
-      "K05_FUND_EVENT.csv",
-      "K05_COPY_FUNDS_ONLY_EVENT.csv",
-      "K05_EVENT_LINKAGE_MATRIX.csv",
-      "K05_EVENT_LINEAGE.csv"
-    ],
-    "explicitly_excluded_file": "K05_UNIFIED_EVENT_EVIDENCE.csv",
-    "excluded_file_used_in_reselection": false,
-    "excluded_file_present_in_readonly_mirror": false,
-    "excluded_file_present_in_fact_source_paths": false,
-    "category_candidate_counts": {
-      "1_multiple_open_or_add_attempts_cancel_and_replacement": 1,
-      "2_stop_takeprofit_evolution_and_candidate_relation": 60,
-      "3_t087_two_lawful_paths_and_outer_envelope": 1,
-      "4_external_fund_or_shared_account_impact": 87,
-      "5_adjacent_trades_and_unassigned_condition": 31,
-      "6_copy_trading_effect_object": 12,
-      "7_partial_fill_reduce_close_and_continuity": 4,
-      "8_conflict_interval_multiple_candidates_or_unknown": 31,
-      "9_long_object_chunk_continuity_and_two_views": 136
-    },
-    "selected_objects": {
-      "1_multiple_open_or_add_attempts_cancel_and_replacement": "T120",
-      "2_stop_takeprofit_evolution_and_candidate_relation": "T020",
-      "3_t087_two_lawful_paths_and_outer_envelope": "T087",
-      "4_external_fund_or_shared_account_impact": "T020",
-      "5_adjacent_trades_and_unassigned_condition": "T092|T093|COND-0218",
-      "6_copy_trading_effect_object": "U016",
-      "7_partial_fill_reduce_close_and_continuity": "T112",
-      "8_conflict_interval_multiple_candidates_or_unknown": "T087|T092|T093|COND-0218",
-      "9_long_object_chunk_continuity_and_two_views": "T020"
-    },
-    "boundary_checks": {
-      "external_fund_overlap_not_promoted_to_causation_or_ownership": true,
-      "unassigned_condition_not_forced_into_adjacent_trade": true,
-      "original_candidate_cycle_id_not_rewritten": true,
-      "copy_object_kept_outside_136_active_trade_denominator": true,
-      "stable_display_order_not_promoted_to_true_causal_order": true
+      "sha256": "d346bf4e5c7761ccc1891ae8a9ea2f62e20cfcde6de2d8b9057f9da3deca330a",
+      "self_exclusion_reason": "文件无法把自身最终SHA-256写进自身而不形成循环，因此本清单排除本文件自身；本文件最终身份由Git固定提交保存。"
     }
   },
   "count_reconciliation": {
@@ -124,206 +76,398 @@
       "post_stage3_findings": 16,
       "recomputation_requirements": 3
     },
+    "capability_bounded_sample_status": {
+      "NOT_YET_RUN": 69,
+      "NOT_YET_RUN_GAP_MUST_REMAIN_EXPLICIT": 19,
+      "NOT_APPLICABLE_BOUNDARY_ONLY": 5,
+      "NOT_AUTHORIZED_PENDING_USER_ACCEPTANCE": 1
+    },
     "bounded_fact_base": {
-      "total": 3896,
-      "facts": 1300,
+      "total": 3902,
+      "facts": 1306,
+      "real_event_facts": 1300,
+      "relation_target_reference_facts_not_events": 6,
       "relationships": 1258,
+      "relationships_to_event_facts": 1195,
+      "relationships_to_reference_facts": 63,
       "lineage": 1336,
       "method_evidence": 2,
-      "unique_fact_ids": 3896
+      "unique_fact_ids": 3902
     }
+  },
+  "gap_and_capability_verification": {
+    "nineteen_gap_mapping": {
+      "stage3_source_lines": "447-465",
+      "exact_semantic_pairing": true,
+      "each_record_keeps_stage3_capability_id_statement_line_and_record_id": true,
+      "deliberate_pair_swap_rejected": true,
+      "boundary": "这证明十九项候选映射与正式阶段三证据按含义对齐，不表示十九项缺口已经全部解决。"
+    },
+    "ninety_four_capability_specs": {
+      "capability_count": 94,
+      "all_have_concrete_source_selector_join_output_and_check_specs": true,
+      "strictly_checked_items": [
+        "来源路径与02回执",
+        "选择器类型",
+        "字段范围指纹",
+        "来源绑定",
+        "连接算子、方向、连接键、基数和缺键处理",
+        "输出位置",
+        "检查编号和期望",
+        "未决状态门",
+        "只读镜像SHA-256"
+      ],
+      "negative_mutations_rejected": true,
+      "boundary": "这证明九十四项都有可执行候选规格且规格间关系可被程序严格检查，不表示它们已经在136笔全量数据上运行或通过。"
+    },
+    "t087_method_scope": {
+      "source_receipt_id": "S3INPUT-41",
+      "object_1_allowed_json_pointers": [
+        "/current_effective_rule",
+        "/unique_order_proven",
+        "/lawful_order_variant_count",
+        "/t087_outer_envelope",
+        "/lawful_variants_identity"
+      ],
+      "object_2_allowed_csv_rows": 2,
+      "read_from_verified_mirrors_only": true,
+      "parent_source_open_count_during_bounded_build": 0,
+      "extra_parent_key_excluded": true,
+      "missing_allowed_pointer_rejected": true
+    }
+  },
+  "recomputation_candidate_verification": {
+    "recomputation_count": 3,
+    "actual_method_selected_object_counts": [
+      1,
+      2,
+      5
+    ],
+    "exact_target_input_formula_output_and_check_contracts_verified": true,
+    "method_objects_bound_to_input_receipts_and_normalized_selectors": true,
+    "wrong_identity_selector_formula_output_or_check_mutations_rejected": true,
+    "synthetic_formula_tests": 3,
+    "real_business_recomputations_run": 0,
+    "boundary": "只证明以后重算的候选办法和输入依赖已被严格表达并用虚构数据做过测试，不表示用户已授权或已经运行真实重算。"
+  },
+  "sample_reselection": {
+    "selection_source_policy": "ONLY_THE_EIGHT_ORIGINAL_S3INPUT_35_FILES",
+    "allowed_files": [
+      "K05_ORDER_EVENT.csv",
+      "K05_FILL_EVENT.csv",
+      "K05_POSITION_ACTION_EVENT.csv",
+      "K05_CONDITIONAL_ORDER_LIFECYCLE_EVENT.csv",
+      "K05_FUND_EVENT.csv",
+      "K05_COPY_FUNDS_ONLY_EVENT.csv",
+      "K05_EVENT_LINKAGE_MATRIX.csv",
+      "K05_EVENT_LINEAGE.csv"
+    ],
+    "all_sources_read_from_verified_readonly_mirrors": true,
+    "parent_source_open_count_during_bounded_build": 0,
+    "explicitly_excluded_file": "K05_UNIFIED_EVENT_EVIDENCE.csv",
+    "excluded_file_used_in_reselection": false,
+    "excluded_file_present_in_readonly_mirror": false,
+    "excluded_file_present_in_fact_source_paths": false,
+    "boundary_checks": {
+      "external_fund_overlap_not_promoted_to_causation_or_ownership": true,
+      "unassigned_condition_not_forced_into_adjacent_trade": true,
+      "original_candidate_cycle_id_not_rewritten": true,
+      "copy_object_kept_outside_136_active_trade_denominator": true,
+      "stable_display_order_not_promoted_to_true_causal_order": true
+    }
+  },
+  "relationship_endpoint_verification": {
+    "all_relationship_source_and_target_fact_ids_exist": true,
+    "empty_or_dangling_endpoint_count": 0,
+    "relationship_count": 1258,
+    "direct_event_target_count": 1195,
+    "object_reference_target_count": 63,
+    "reference_fact_count": 6,
+    "reference_inbound_relation_distribution": [
+      24,
+      16,
+      11,
+      10,
+      1,
+      1
+    ],
+    "five_normal_or_multi_candidate_reference_facts_evidence_status": "CANDIDATE",
+    "multi_candidate_endpoint_preserves_both_candidates": true,
+    "copy_funds_reference_fact_evidence_status": "DIRECT",
+    "copy_funds_reference_fact_promotion_prohibited": true,
+    "copy_funds_reference_fact_scope": "CROSS_OBJECT_RELATION_NOT_IN_136_ACTIVE_TRADE_DENOMINATOR",
+    "wrong_existing_endpoint_candidate_collapse_candidate_promotion_and_copy_boundary_erasure_rejected": true,
+    "boundary": "六条引用事实只负责让关系目标可以反向查回，不是六条交易事件，也不把候选归属或跟单对象晋升为主动交易事实。"
+  },
+  "view_generation_reconciliation": {
+    "formal_program": "06_构建与确定性装载程序候选.py",
+    "formal_config": "07_构建配置_依赖与运行环境锁定候选.json",
+    "one_command": "python3 06_构建与确定性装载程序候选.py build-views --config 07_构建配置_依赖与运行环境锁定候选.json",
+    "source_fact_base": {
+      "file": "10_有界测试事实底座候选.jsonl",
+      "bytes": 19279441,
+      "sha256": "2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9",
+      "record_count": 3902,
+      "repeat_byte_identical_in_two_fresh_builds": true
+    },
+    "ai_view": {
+      "file": "11_AI读取测试版候选.md",
+      "bytes": 19290140,
+      "sha256": "c01a121bac57cf250d9a691f44e4555c423bb5e9fbb1f13158afa3d076cea70c",
+      "object_navigation_entry_count": 11,
+      "complete_source_record_appears_once_in_object_body": true,
+      "all_source_fact_ids_and_order_exact": true,
+      "repeat_byte_identical_in_two_fresh_builds": true,
+      "external_ai_actual_reading_status": "PENDING_NEW_WORK_REVIEW"
+    },
+    "user_workbook": {
+      "file": "12_用户核对测试版候选.xlsx",
+      "bytes": 1216268,
+      "sha256": "c4d5ac34ad33bce105444706f147096738a6d780eeb4a07f00f5db4c481b56bd",
+      "sheet_names": [
+        "从这里开始",
+        "对象目录",
+        "事件时间线",
+        "关系与归属",
+        "特殊对象与边界",
+        "来源追溯",
+        "输入范围",
+        "技术原文"
+      ],
+      "sheet_row_counts": {
+        "从这里开始": 9,
+        "对象目录": 11,
+        "事件时间线": 1300,
+        "关系与归属": 1258,
+        "特殊对象与边界": 11,
+        "来源追溯": 1336,
+        "输入范围": 83,
+        "技术原文": 3902
+      },
+      "all_headers_rows_and_display_values_exact": true,
+      "event_timeline_contains_real_events_only": true,
+      "relation_target_columns_exact": true,
+      "six_reference_facts_listed_as_non_events": true,
+      "formula_error_count": 0,
+      "display_content_sha256": "5825f660919683ef8cb49cd4e0fddb3dcbdfdaa7bd48b1469f0990cd45e28910",
+      "repeat_display_content_identical_in_two_fresh_builds": true,
+      "container_byte_identity_required": false,
+      "container_byte_identity_note": "表格工具每次可能生成不同的内部关系编号；是否同源由八张工作表的名称、顺序、行数、表头、全部显示值和稳定显示内容指纹判断。",
+      "all_eight_sheets_rendered_and_visually_checked": true,
+      "user_understandability_status": "WAITING_FOR_ACTUAL_USER_REVIEW",
+      "user_understandability_cannot_be_self_passed": true
+    },
+    "independent_temporary_rebuild_count": 2,
+    "candidate_outputs_regenerated_by_formal_command": true,
+    "temporary_generator_required_for_future_rebuild": false
+  },
+  "program_tests": {
+    "defined": 55,
+    "executed": 55,
+    "passed": 55,
+    "failed": 0,
+    "synthetic_recomputation_tests": 3,
+    "real_business_recomputations_run": 0
   },
   "quality_checks": [
     {
       "check_id": "QA-001",
-      "name": "固定正式起点存在",
+      "name": "固定正式起点、合同、正式方案、配套矩阵和阶段三机器总账身份一致",
       "status": "PASS"
     },
     {
       "check_id": "QA-002",
-      "name": "合同、正式方案、配套矩阵和阶段三机器总账指纹一致",
+      "name": "四十四项候选、七十四次对象引用和七十二条不重复路径分母对账",
       "status": "PASS"
     },
     {
       "check_id": "QA-003",
-      "name": "四十四项采用候选数量和编号完整",
+      "name": "四十四项正式采用数量仍为零",
       "status": "PASS"
     },
     {
       "check_id": "QA-004",
-      "name": "四十四项正式采用状态全部为否",
-      "status": "PASS"
-    },
-    {
-      "check_id": "QA-005",
-      "name": "十项直接使用、三十一项限定抽取、三项以后重新计算的分类对账",
-      "status": "PASS"
-    },
-    {
-      "check_id": "QA-006",
-      "name": "七十四次选定对象引用均有回执",
-      "status": "PASS"
-    },
-    {
-      "check_id": "QA-007",
-      "name": "七十二条不重复物理路径均存在且父文件身份一致",
-      "status": "PASS"
-    },
-    {
-      "check_id": "QA-008",
-      "name": "同一路径不同选区按七十四次对象引用分别保留，没有被路径去重吞掉",
-      "status": "PASS"
-    },
-    {
-      "check_id": "QA-009",
-      "name": "三项重新计算只形成前置办法和依赖，没有运行真实业务重新计算",
-      "status": "PASS"
-    },
-    {
-      "check_id": "QA-010",
       "name": "二百零八条组成、能力、输入、缺口、阶段三后发现和重算要求对账",
       "status": "PASS"
     },
     {
+      "check_id": "QA-005",
+      "name": "十九项与阶段三第447至465行逐项语义对应",
+      "status": "PASS"
+    },
+    {
+      "check_id": "QA-006",
+      "name": "故意交换十九项来源时被拒绝",
+      "status": "PASS"
+    },
+    {
+      "check_id": "QA-007",
+      "name": "九十四项能力均有具体来源、选择、连接、输出和检查候选规格",
+      "status": "PASS"
+    },
+    {
+      "check_id": "QA-008",
+      "name": "错来源路径、错选择器、错字段指纹或被改坏镜像均被拒绝",
+      "status": "PASS"
+    },
+    {
+      "check_id": "QA-009",
+      "name": "错连接方向、连接键、基数、缺键处理、输出或检查期望均被拒绝",
+      "status": "PASS"
+    },
+    {
+      "check_id": "QA-010",
+      "name": "T087只读取五个获准JSON指针和两行合法路径镜像",
+      "status": "PASS"
+    },
+    {
       "check_id": "QA-011",
-      "name": "样本候选池、排序和选择只使用原来允许的八份事件文件",
+      "name": "T087多余父字段被排除，缺少获准指针、重复事件或事件集合错位时被拒绝",
       "status": "PASS"
     },
     {
       "check_id": "QA-012",
-      "name": "额外汇总表未进入输入镜像、候选池、排序、事实底座或两个测试版",
+      "name": "样本选择只使用八份获准事件文件，额外汇总表没有进入镜像或事实来源",
       "status": "PASS"
     },
     {
       "check_id": "QA-013",
-      "name": "九类困难情形都有候选池、公开排序结果和最终选择",
+      "name": "八份样本来源在有界构建中只从已核验只读镜像读取，父级原件打开数为零",
       "status": "PASS"
     },
     {
       "check_id": "QA-014",
-      "name": "T087仍固定保存两条合法路径及外包络，不选择唯一真实顺序",
+      "name": "三项重算候选的目标、输入、精确公式、输出、检查及方法对象与回执一致",
       "status": "PASS"
     },
     {
       "check_id": "QA-015",
-      "name": "共享资金只保存时间重叠和账户层影响，不升级为单笔因果或归属",
+      "name": "错重算来源身份、选择器、公式、输出或检查项均被拒绝",
       "status": "PASS"
     },
     {
       "check_id": "QA-016",
-      "name": "相邻交易中的条件对象保持未归属和多个候选，不强行塞给一笔",
+      "name": "三项重算只用虚构数字检查办法，没有运行真实业务重算",
       "status": "PASS"
     },
     {
       "check_id": "QA-017",
-      "name": "跟单对象与一百三十六笔主动交易分母分开",
+      "name": "事实底座3902条及四类数量和事实ID唯一性对账",
       "status": "PASS"
     },
     {
       "check_id": "QA-018",
-      "name": "事实底座三千八百九十六条记录的类型数量对账",
+      "name": "1300条真实事件与6条关系目标对象引用分开保存，后者没有冒充交易事件",
       "status": "PASS"
     },
     {
       "check_id": "QA-019",
-      "name": "事实ID全部非空且不重复",
+      "name": "1258条关系的来源端和目标端全部存在，没有空端或悬空端",
       "status": "PASS"
     },
     {
       "check_id": "QA-020",
-      "name": "来源、事实结论、执行状态、适用范围、冲突、用户说明和人工智能判断分栏保存",
+      "name": "63条对象目标关系准确汇入6条对象引用事实",
       "status": "PASS"
     },
     {
       "check_id": "QA-021",
-      "name": "长整数、小数、原始时间、时区、币种和单位均有无损规则和程序测试",
+      "name": "普通及双候选对象端点仍是候选，双候选没有被偷偷择一",
       "status": "PASS"
     },
     {
       "check_id": "QA-022",
-      "name": "UNKNOWN、区间、多个候选、冲突、不适用、未评估、未授权和被阻断没有被静默改写",
+      "name": "跟单资金端点保持跨对象且禁止晋升，不进入136笔主动交易分母",
       "status": "PASS"
     },
     {
       "check_id": "QA-023",
-      "name": "规范化序列化和稳定ID可以重复得到相同结果",
+      "name": "故意改错端点、删掉双候选、升级候选或抹除跟单边界均被拒绝",
       "status": "PASS"
     },
     {
       "check_id": "QA-024",
-      "name": "十五项最小程序测试全部通过",
-      "status": "PASS",
-      "passed": 15,
-      "failed": 0
+      "name": "来源、事实结论、执行状态、采用状态、适用范围、冲突、用户说明和AI判断分别保存",
+      "status": "PASS"
     },
     {
       "check_id": "QA-025",
-      "name": "候选装载程序从七十四次回执重新建立七十四个只读对象镜像",
+      "name": "长编号、小数、负数、时间时区、币种单位、未知、区间、多候选、不适用和冲突均通过程序检查",
       "status": "PASS"
     },
     {
       "check_id": "QA-026",
-      "name": "重新建立的七十四个镜像与首次镜像文件名、字节和SHA-256完全一致",
-      "status": "PASS"
+      "name": "五十五项程序测试实际执行",
+      "status": "PASS",
+      "passed": 55,
+      "failed": 0
     },
     {
       "check_id": "QA-027",
-      "name": "候选程序重复生成的事实底座与候选事实底座逐字节一致",
+      "name": "同一最终程序、配置和输入在两个独立临时位置重建事实底座且逐字节一致",
       "status": "PASS"
     },
     {
       "check_id": "QA-028",
-      "name": "正式候选程序和配置可用一条命令从事实底座重建人工智能读取版；三千八百九十六条记录和顺序完全一致",
-      "status": "PASS",
-      "content_sha256": "4db3325a4eca49e392138c843b1030bd70709841ccaab1d942517e74e59f3325"
+      "name": "AI版3902条完整机器记录与事实底座逐条逐序一致，两次重建逐字节一致",
+      "status": "PASS"
     },
     {
       "check_id": "QA-029",
-      "name": "正式候选程序和配置可用同一条命令从事实底座重建用户核对表格；四类事实ID、全部表头、显示值、数量和顺序完全一致",
-      "status": "PASS",
-      "workbook_content_sha256": "39a2bdd5887cfab5ae935e446a47b2768251407ef88e99a989162caf981c2910"
+      "name": "用户版八张工作表与事实底座的表头、行数和全部显示值对账",
+      "status": "PASS"
     },
     {
       "check_id": "QA-030",
-      "name": "用户核对表格七张工作表、九类样本和七十四次输入回执对账",
+      "name": "用户版事件页只含1300条真实事件，6条对象引用在特殊边界页单独说明",
       "status": "PASS"
     },
     {
       "check_id": "QA-031",
-      "name": "用户核对表格重新打开后没有检测到公式错误",
+      "name": "两次用户版显示内容一致，未检测到公式错误",
       "status": "PASS"
     },
     {
       "check_id": "QA-032",
-      "name": "用户核对表格的七张工作表均已实际渲染检查",
+      "name": "八张用户版工作表已完成渲染和排版核对",
       "status": "PASS"
     },
     {
       "check_id": "QA-033",
-      "name": "干净生产根只包含合同规定的四个逻辑区域，额外汇总表和未获准对象未进入只读输入区",
+      "name": "01、02、04、05、09以及正式和冻结材料保持不变",
       "status": "PASS"
     },
     {
       "check_id": "QA-034",
-      "name": "十二项禁止对象、三项未决对象、二百六十七项历史参考、十九项权威缺口和三百零一项非构建处置项没有被伪装成已采用生产输入",
+      "name": "04和05的条件修改没有触发",
       "status": "PASS"
     },
     {
       "check_id": "QA-035",
-      "name": "历史聊天、旧工程整体和失败候选没有进入干净生产输入",
+      "name": "实际变更严格限制为本轮批准的十一份文件",
       "status": "PASS"
     },
     {
       "check_id": "QA-036",
-      "name": "原件、正式仓库主线和冻结成果没有被修改",
-      "status": "PASS"
+      "name": "另一个AI通过新的固定提交进行实际读取和只读内容审查",
+      "status": "PENDING_NEW_WORK_REVIEW"
+    },
+    {
+      "check_id": "QA-037",
+      "name": "用户本人确认用户核对版容易理解",
+      "status": "WAITING_FOR_ACTUAL_USER_REVIEW"
+    },
+    {
+      "check_id": "QA-038",
+      "name": "最终永久物理格式由用户决定",
+      "status": "NOT_DECIDED"
     }
   ],
   "candidate_manifest_excluding_self": [
     {
       "name": "00_第一工作包用户白话说明与执行回执_待用户核对.md",
-      "bytes": 8784,
-      "sha256": "758cc1e6879838f8397e4d5d156046c17bae0476d1c81ca836882b0002da6cd8"
+      "bytes": 10543,
+      "sha256": "7e017ffdb6982b80620512c4b2319a64c1d2e3ac3c219c34bae45a376f99cb9a"
     },
     {
       "name": "01_四十四项采用清单候选.jsonl",
@@ -337,8 +481,8 @@
     },
     {
       "name": "03_字段关系组装与能力闭合表候选.jsonl",
-      "bytes": 310441,
-      "sha256": "b29f35b9f92e730046057def51ca962de17a95f6c993eadfd340739369b2bcfa"
+      "bytes": 1327298,
+      "sha256": "f2e8642143d2e3f008b52b67e0df2ae8074b548a9be06d78067f25aebde1916a"
     },
     {
       "name": "04_数据结构与规范化规则候选.json",
@@ -352,18 +496,18 @@
     },
     {
       "name": "06_构建与确定性装载程序候选.py",
-      "bytes": 40194,
-      "sha256": "633f5e5bcd51b5f60ff6431eadebcc494815da9c6b983333b0a666c60be6cd11"
+      "bytes": 129894,
+      "sha256": "1e26fb8a58bb91c0641f18595a6aeab949fefb264f834a2a2dd9ea6555ce4c2e"
     },
     {
       "name": "07_构建配置_依赖与运行环境锁定候选.json",
-      "bytes": 16174,
-      "sha256": "a5fc77a6a194917e25c4b6be24f5fcf82b606772557f5bfeb1526dcdaf49fbcc"
+      "bytes": 15727,
+      "sha256": "703109231555a3f98e3e4e86b21cd944b5f167d0781cc8fb4e60d4178a04ec5b"
     },
     {
       "name": "08_最小程序测试与预期结果候选.jsonl",
-      "bytes": 3546,
-      "sha256": "a61bb473e3ea9c80052923beec9eb38229beed40d25c23791423f1081c670f0b"
+      "bytes": 25324,
+      "sha256": "a480672ab77561d88232dea512285768ca85fe7c36d370b093683db7df4c7124"
     },
     {
       "name": "09_有界验证样本清单候选.json",
@@ -372,33 +516,42 @@
     },
     {
       "name": "10_有界测试事实底座候选.jsonl",
-      "bytes": 7476422,
-      "sha256": "8c065227f19d0bb9eea2d096fd5f27dd2425069ce7e49562442f833871a5605f"
+      "bytes": 19279441,
+      "sha256": "2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9"
     },
     {
       "name": "11_AI读取测试版候选.md",
-      "bytes": 7481791,
-      "sha256": "4db3325a4eca49e392138c843b1030bd70709841ccaab1d942517e74e59f3325"
+      "bytes": 19290140,
+      "sha256": "c01a121bac57cf250d9a691f44e4555c423bb5e9fbb1f13158afa3d076cea70c"
     },
     {
       "name": "12_用户核对测试版候选.xlsx",
-      "bytes": 550985,
-      "sha256": "eec3d67f9188b11816f82ee6b903acf040c1bbb60baeb1c8a3865f2f0428dd1c"
+      "bytes": 1216268,
+      "sha256": "c4d5ac34ad33bce105444706f147096738a6d780eeb4a07f00f5db4c481b56bd"
     },
     {
       "name": "14_用户白话检查说明与04B对应回执_待用户核对.md",
-      "bytes": 7788,
-      "sha256": "771d5233457a3ed2057f9032db318bdd422ef88c9fab86b827e6e1350833365d"
+      "bytes": 9689,
+      "sha256": "ef3d83614b0d5b794b52bf698fc0515cf93929ee5f6cfee02e39dc90458ca13a"
     }
   ],
+  "review_state": {
+    "new_work_title": "交易分析work",
+    "new_work_thread_id": "01a09646-fca8-7563-85ae-6426ec277c1a",
+    "fixed_commit_review_started": false,
+    "external_ai_blind_reading_completed": false,
+    "actual_user_review_completed": false
+  },
   "final_boundaries": {
     "input_candidates_formally_adopted": 0,
     "real_business_recalculations_run": 0,
     "full_136_objective_chains_built": 0,
     "final_physical_format_decided": false,
-    "stage2_or_stage3_frozen_outputs_modified": false,
+    "stage1_stage2_or_stage3_frozen_outputs_modified": false,
     "problem_ledger_04B_modified": false,
-    "automatic_acceptance_freeze_or_main_merge_authorized": false
+    "automatic_acceptance_freeze_or_main_merge_authorized": false,
+    "second_package_started": false,
+    "formal_trade_analysis_started": false
   },
-  "overall_result": "PASS_AS_FIRST_PACKAGE_COMPLETION_CANDIDATE_PENDING_FIXED_GIT_COMMIT_CHAT_REVIEW_AND_USER_DECISION"
+  "overall_result": "TECHNICAL_CORRECTION_CANDIDATE_READY_FOR_FIXED_COMMIT_PENDING_NEW_WORK_REVIEW_AND_USER_DECISION"
 }
