@@ -67,7 +67,7 @@
     },
     "other_fourteen_candidate_files_manifest": {
       "definition": "除本质量检查文件自身以外，另外十四份候选的文件名、字节数和SHA-256清单按文件名排序后规范化序列化。",
-      "sha256": "f45ff72b55f16e6aefef77b125bd88a732ce20b23de63bc5ce8ce41412b03e89",
+      "sha256": "4c2341167d4ac966dafc0efd7b436300be8098cc9cfd38666d1d266ba58715f1",
       "self_exclusion_reason": "文件无法把自身最终SHA-256写进自身而不形成循环，因此本清单排除本文件自身；本文件最终身份由Git固定提交保存。"
     }
   },
@@ -134,7 +134,7 @@
       "operator_identity_count": 33,
       "declarative_profile_count": 10,
       "source_field_applications_checked": 4773,
-      "unique_input_object_and_source_field_combinations_checked": 678,
+      "unique_source_fields_checked": 678,
       "jsonl_schema_policy": "UNION_ALL_NONEMPTY_OBJECT_ROWS_NOT_FIRST_ROW_ONLY",
       "s3input_06_schema_witness": {
         "record_count": 639,
@@ -565,8 +565,8 @@
   "candidate_manifest_excluding_self": [
     {
       "name": "00_第一工作包用户白话说明与执行回执_待用户核对.md",
-      "bytes": 12651,
-      "sha256": "e3f2ea23f1e8db7c4277f29f71029798abcd049865d2bd988060c4cd83cd2aef"
+      "bytes": 12639,
+      "sha256": "24541ca2e97d9d114ef84fa514723ef6816432281b214750a05979ca88a22ccb"
     },
     {
       "name": "01_四十四项采用清单候选.jsonl",
@@ -630,8 +630,8 @@
     },
     {
       "name": "14_用户白话检查说明与04B对应回执_待用户核对.md",
-      "bytes": 10339,
-      "sha256": "5659e0f629dfc72b5385f1fa1e1c21c4a8601cbcb52a8afda80de1bee917a178"
+      "bytes": 10342,
+      "sha256": "6e00412769b2fde0fc68628483ce7910f08c9cf2687c3bc942c49526b8298035"
     }
   ],
   "review_state": {
