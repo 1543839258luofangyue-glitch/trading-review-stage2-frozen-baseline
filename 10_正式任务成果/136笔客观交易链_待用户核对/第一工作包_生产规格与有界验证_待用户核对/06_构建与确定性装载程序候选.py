@@ -18,6 +18,32 @@ from xml.etree import ElementTree as ET
 def canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
 
+EXCEL_DOCUMENTED_CELL_LIMIT_UTF16=32767
+EXCEL_SAFE_CELL_LIMIT_UTF16=30000
+
+def utf16_units(value):
+    if not isinstance(value,str):
+        raise RuntimeError('UTF16_TEXT_REQUIRED')
+    return len(value.encode('utf-16-le'))//2
+
+def split_utf16_safe(value,limit=EXCEL_SAFE_CELL_LIMIT_UTF16):
+    if not isinstance(limit,int) or limit<=0 or limit>EXCEL_DOCUMENTED_CELL_LIMIT_UTF16:
+        raise RuntimeError('EXCEL_TECHNICAL_CHUNK_LIMIT_INVALID')
+    if not isinstance(value,str) or value=='':
+        raise RuntimeError('EXCEL_TECHNICAL_CHUNK_TEXT_EMPTY_OR_INVALID')
+    chunks=[]; current=[]; current_units=0
+    for char in value:
+        char_units=2 if ord(char)>0xffff else 1
+        if char_units>limit:
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_CHARACTER_TOO_LARGE')
+        if current and current_units+char_units>limit:
+            chunks.append(''.join(current)); current=[]; current_units=0
+        current.append(char); current_units+=char_units
+    if current: chunks.append(''.join(current))
+    if ''.join(chunks)!=value or any(utf16_units(chunk)>limit for chunk in chunks):
+        raise RuntimeError('EXCEL_TECHNICAL_CHUNK_ROUNDTRIP_FAILED')
+    return chunks
+
 def sha_file(path):
     h=hashlib.sha256()
     with open(path,'rb') as f:
@@ -56,6 +82,99 @@ NUMERIC_FIELD_NAMES={
     'position_after','average_price_before','average_price_after','weighted_price',
     'notional','lifecycle_duration_seconds','fill_count',
 }
+
+# This registry is deliberately closed.  A capability declaration is not
+# executable merely because it contains an operator-shaped string: the exact
+# operator, version, declarative profile and result profile must all be present
+# here.  The profile is a bounded specification witness, not the future full
+# business implementation of that operator.
+OPERATOR_REGISTRY_VERSION='1.0'
+SUPPORTED_OPERATOR_REGISTRY={
+    'ACTIVE_AND_COPY_SCOPE_PARTITION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_CLASSIFICATION_V1','result_profile':'CLASSIFICATION'},
+    'ADJACENT_REVERSE_POSITION_OBJECTIVE_LINKAGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_RELATION_V1','result_profile':'RELATION'},
+    'ANALYSIS_STRATEGY_AND_COUNTERFACTUAL_BOUNDARY':{'version':'1.0','declarative_profile_id':'NO_FACT_BOUNDARY_V1','result_profile':'BOUNDARY'},
+    'CANONICAL_CASH_EVENT_DEDUPLICATION_AND_TRANSFER_PAIRING':{'version':'1.0','declarative_profile_id':'DECLARATIVE_RELATION_V1','result_profile':'RELATION'},
+    'CONDITION_TO_ORDER_FILL_AND_CYCLE_RELATION_GRAPH':{'version':'1.0','declarative_profile_id':'DECLARATIVE_RELATION_V1','result_profile':'RELATION'},
+    'FACT_USER_STATEMENT_INTERPRETATION_AND_STATUS_LAYERING':{'version':'1.0','declarative_profile_id':'DECLARATIVE_CLASSIFICATION_V1','result_profile':'CLASSIFICATION'},
+    'FEE_AND_NET_RESULT_COMPONENT_SEPARATION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'FILL_PRICE_AND_WEIGHTED_AVERAGE_TRANSITION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'FILL_TO_ORDER_AND_CYCLE_LINKAGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_RELATION_V1','result_profile':'RELATION'},
+    'FUTURE_SCHEMA_AND_FORMAT_BOUNDARY':{'version':'1.0','declarative_profile_id':'NO_FACT_BOUNDARY_V1','result_profile':'BOUNDARY'},
+    'IDENTIFIER_MAPPING_WITHOUT_ID_REPLACEMENT':{'version':'1.0','declarative_profile_id':'DECLARATIVE_IDENTITY_V1','result_profile':'IDENTITY'},
+    'IDENTITY_RESOLUTION_WITH_SOURCE_BOUNDARIES':{'version':'1.0','declarative_profile_id':'DECLARATIVE_IDENTITY_V1','result_profile':'IDENTITY'},
+    'MARGIN_AND_RISK_FIELDS_SEPARATED_NO_INFERENCE_FOR_MISSING_VALUES':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'MARKET_DATA_IDENTITY_WINDOW_AND_COVERAGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_COVERAGE_V1','result_profile':'COVERAGE'},
+    'MFE_MAE_BY_CYCLE_OR_POSITION_STAGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'NON_OBJECTIVE_USER_REASON_BOUNDARY':{'version':'1.0','declarative_profile_id':'NO_FACT_BOUNDARY_V1','result_profile':'BOUNDARY'},
+    'OBJECTIVE_ACTION_CLASSIFICATION_WITH_EVIDENCE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_CLASSIFICATION_V1','result_profile':'CLASSIFICATION'},
+    'ORDER_AND_CONDITION_LIFECYCLE_LINKAGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_LIFECYCLE_V1','result_profile':'LIFECYCLE'},
+    'POSITION_QUANTITY_STATE_TRANSITION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'POSITION_ZERO_TO_NONZERO_TO_ZERO_CYCLE_GROUPING':{'version':'1.0','declarative_profile_id':'DECLARATIVE_LIFECYCLE_V1','result_profile':'LIFECYCLE'},
+    'REALIZED_PNL_BY_FILL_AND_CYCLE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'REFERENTIAL_AND_QUANTITY_INTEGRITY_CHECKS':{'version':'1.0','declarative_profile_id':'DECLARATIVE_INTEGRITY_V1','result_profile':'INTEGRITY'},
+    'SCREENSHOT_CONDITION_AND_CYCLE_LINEAGE_BRIDGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_LINEAGE_V1','result_profile':'LINEAGE'},
+    'SIDE_POSITION_SIDE_AND_POSITION_EFFECT_SEPARATION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_CLASSIFICATION_V1','result_profile':'CLASSIFICATION'},
+    'STABLE_ID_AND_SOURCE_NAMESPACE_PRESERVATION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_IDENTITY_V1','result_profile':'IDENTITY'},
+    'STOP_LOSS_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_LIFECYCLE_V1','result_profile':'LIFECYCLE'},
+    'TAKE_PROFIT_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_LIFECYCLE_V1','result_profile':'LIFECYCLE'},
+    'TIMELINE_UNION_PRESERVE_EQUAL_TIME_PARALLEL_EVENTS':{'version':'1.0','declarative_profile_id':'DECLARATIVE_TIMELINE_V1','result_profile':'TIMELINE'},
+    'TIME_BOUNDED_EQUITY_ANCHORS_AND_UNKNOWN_GAPS':{'version':'1.0','declarative_profile_id':'DECLARATIVE_TIMELINE_V1','result_profile':'TIMELINE'},
+    'TIME_NORMALIZATION_WITH_ORIGINAL_VALUE_AND_PRECISION':{'version':'1.0','declarative_profile_id':'DECLARATIVE_TIMELINE_V1','result_profile':'TIMELINE'},
+    'USER_INTERFACE_PRODUCT_BOUNDARY':{'version':'1.0','declarative_profile_id':'NO_FACT_BOUNDARY_V1','result_profile':'BOUNDARY'},
+    'USER_STAGE_AGGREGATION_ACROSS_POSITION_PRICE_AND_MFE_MAE_COMPONENTS':{'version':'1.0','declarative_profile_id':'DECLARATIVE_MEASURE_V1','result_profile':'MEASURE'},
+    'VERSION_CORRECTION_AND_SOURCE_IDENTITY_LINEAGE':{'version':'1.0','declarative_profile_id':'DECLARATIVE_LINEAGE_V1','result_profile':'LINEAGE'},
+}
+DECLARATIVE_PROFILE_REGISTRY={
+    'DECLARATIVE_CLASSIFICATION_V1':'CLASSIFICATION',
+    'DECLARATIVE_COVERAGE_V1':'COVERAGE',
+    'DECLARATIVE_IDENTITY_V1':'IDENTITY',
+    'DECLARATIVE_INTEGRITY_V1':'INTEGRITY',
+    'DECLARATIVE_LIFECYCLE_V1':'LIFECYCLE',
+    'DECLARATIVE_LINEAGE_V1':'LINEAGE',
+    'DECLARATIVE_MEASURE_V1':'MEASURE',
+    'DECLARATIVE_RELATION_V1':'RELATION',
+    'DECLARATIVE_TIMELINE_V1':'TIMELINE',
+    'NO_FACT_BOUNDARY_V1':'BOUNDARY',
+}
+SUPPORTED_CAPABILITY_TRANSFORMS={
+    'PRESERVE_EXACT_VALUE','PRESERVE_AND_DECIMAL_CANONICALIZE_IF_NUMERIC',
+    'PRESERVE_TIME_VALUE_WITHOUT_TIMEZONE_INFERENCE','PARSE_JSON_TEXT_PRESERVE_RAW',
+}
+SUPPORTED_FIELD_USAGES={
+    'JOIN_KEY','OBJECT_ID','SEQUENCE','DATE_SET','TIME','MEASURE','CLASSIFICATION','EVIDENCE','LINEAGE','SOURCE_VALUE',
+}
+SUPPORTED_MISSING_POLICIES={'PRESERVE_UNKNOWN','REJECT_FOR_SELECTED_JOIN_WITNESS'}
+FIELD_RESULT_CHECK='SOURCE_VALUE_OR_EXPLICIT_UNKNOWN_AND_DECLARED_TRANSFORM_EXACT'
+FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS={
+    'source_row','_source_row','source_row_number','row_number','row_no','line_no',
+    'manual_source_row','来源行号','来源行',
+}
+
+def operator_registry_sha256():
+    payload={'registry_version':OPERATOR_REGISTRY_VERSION,'operators':SUPPORTED_OPERATOR_REGISTRY}
+    return hashlib.sha256(canonical(payload).encode('utf-8')).hexdigest()
+
+def capability_operator_parameters(item):
+    """Freeze exact declarative inputs without claiming future business execution."""
+    join=item['assembly_spec']['join']
+    operator=join['operator']; implementation=SUPPORTED_OPERATOR_REGISTRY[operator]
+    field_rule_scope=[{
+        'input_id':binding['input_id'],
+        'selected_object_index':int(binding['selected_object_index']),
+        'source_role':binding['source_role'],
+        'field_rules':binding['field_rules'],
+    } for binding in item.get('source_bindings') or []]
+    return {
+        'operator_id':operator,
+        'declarative_profile_id':implementation['declarative_profile_id'],
+        'business_operator_semantics_execution':'NOT_AUTHORIZED_NOT_RUN',
+        'relation_direction':join['direction'],
+        'cardinality':join['cardinality'],
+        'join_required':bool(join['required']),
+        'join_key_families':join.get('keys') or [],
+        'missing_join_key_behavior':join['missing_join_key_behavior'],
+        'field_rule_scope_sha256':hashlib.sha256(canonical(field_rule_scope).encode('utf-8')).hexdigest(),
+    }
 
 def sha_bytes(value):
     return hashlib.sha256(value).hexdigest()
@@ -279,6 +398,587 @@ def selected_payload(receipt):
     else:
         raise RuntimeError('METHOD_SELECTOR_KIND_NOT_ALLOWED:'+kind)
     return validate_selected_payload(receipt,payload)
+
+RUNNABLE_CAPABILITY_STATUS='CANDIDATE_SPECIFIED_PENDING_END_TO_END_VALIDATION'
+UNRESOLVED_CAPABILITY_STATUS='UNRESOLVED_PRESERVED_NO_FACT_CLOSURE'
+BOUNDARY_CAPABILITY_STATUS='NON_OBJECTIVE_BOUNDARY_CLOSED_NO_FACT_OUTPUT'
+PENDING_CAPABILITY_STATUS='PENDING_USER_ACCEPTANCE_NO_PRODUCTION_CLOSURE'
+
+def capability_mirror_rows(receipt):
+    """Read only the locked selected-object mirror recorded by receipt 02."""
+    mirror=Path(receipt['mirror_path'])
+    if not mirror.is_file() or sha_file(mirror)!=receipt['extracted_content_sha256']:
+        raise RuntimeError('CAPABILITY_RECEIPT_MIRROR_IDENTITY_MISMATCH:'+receipt['input_id'])
+    if mirror.suffix=='.csv':
+        with open(mirror,encoding='utf-8-sig',newline='') as handle:
+            rows=list(csv.DictReader(handle))
+        actual=len(rows)
+    elif mirror.suffix=='.jsonl':
+        rows=read_jsonl(mirror); actual=len(rows)
+    elif mirror.suffix=='.json':
+        value=json.load(open(mirror,encoding='utf-8'))
+        rows=[value] if isinstance(value,dict) else value
+        selector=receipt.get('original_selector') or {}
+        actual=len(value) if selector.get('kind')=='JSON_SELECTED_POINTERS' else len(rows)
+    else:
+        raise RuntimeError('CAPABILITY_RECEIPT_MIRROR_TYPE_UNSUPPORTED:'+mirror.suffix)
+    if not isinstance(rows,list) or not all(isinstance(row,dict) for row in rows):
+        raise RuntimeError('CAPABILITY_MIRROR_ROW_SHAPE_INVALID:'+receipt['input_id'])
+    if actual!=int(receipt['actual_count']):
+        raise RuntimeError('CAPABILITY_MIRROR_COUNT_MISMATCH:'+receipt['input_id'])
+    return rows
+
+def capability_source_locator(row,original_index):
+    parts=['selected-mirror-record-'+str(original_index+1)]
+    for field in ('_sheet','source_sheet','sheet'):
+        if row.get(field) not in (None,''):
+            parts.append(field+'='+str(row[field])); break
+    for field in ('_source_row','source_row','source_row_number','row_no','line_no'):
+        if row.get(field) not in (None,''):
+            parts.append(field+'='+str(row[field])); break
+    return ';'.join(parts)
+
+def capability_join_value(value):
+    if value in (None,''): return []
+    values=value if isinstance(value,list) else [value]
+    return [canonical(item) if isinstance(item,(dict,list)) else str(item) for item in values if item not in (None,'')]
+
+def parse_explicit_offset_datetime(value):
+    """Parse only a datetime whose value itself carries an explicit UTC/offset marker."""
+    text=str(value or '').strip()
+    if not text: return None
+    normalized=text
+    if normalized.endswith('Z'):
+        normalized=normalized[:-1]+'+00:00'
+    elif re.search(r' UTC$',normalized):
+        normalized=re.sub(r' UTC$','+00:00',normalized)
+    elif re.search(r' UTC[+-]\d{2}:\d{2}$',normalized):
+        normalized=re.sub(r' UTC([+-]\d{2}:\d{2})$',r'\1',normalized)
+    elif re.search(r' [+-]\d{2}:\d{2}$',normalized):
+        normalized=re.sub(r' ([+-]\d{2}:\d{2})$',r'\1',normalized)
+    elif re.search(r'[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?[+-]\d{2}:\d{2}$',normalized):
+        pass
+    else:
+        return None
+    try: parsed=datetime.fromisoformat(normalized)
+    except ValueError: return None
+    return parsed if parsed.tzinfo is not None else None
+
+def capability_transform(transform,value):
+    if transform not in SUPPORTED_CAPABILITY_TRANSFORMS:
+        raise RuntimeError('CAPABILITY_TRANSFORM_NOT_IMPLEMENTED:'+str(transform))
+    if transform=='PRESERVE_EXACT_VALUE': return value
+    if transform=='PARSE_JSON_TEXT_PRESERVE_RAW':
+        if not isinstance(value,str):
+            raise RuntimeError('CAPABILITY_JSON_TEXT_REQUIRED')
+        try: parsed=json.loads(value,parse_float=str,parse_int=str)
+        except json.JSONDecodeError as error:
+            raise RuntimeError('CAPABILITY_JSON_TEXT_PARSE_FAILED') from error
+        return normalize_business_value_tree(parsed)
+    if transform=='PRESERVE_AND_DECIMAL_CANONICALIZE_IF_NUMERIC':
+        if value in (None,''): return value
+        text=str(value)
+        return decimal_text(text) if re.fullmatch(r'-?(?:\d+)(?:\.\d+)?',text) else value
+    if transform=='PRESERVE_TIME_VALUE_WITHOUT_TIMEZONE_INFERENCE':
+        if value in (None,''): return value
+        text=str(value).strip()
+        explicit=parse_explicit_offset_datetime(text)
+        if explicit is not None:
+            return {
+                'raw_value':value,
+                'representation':'PARSED_EXPLICIT_OFFSET_DATETIME_NO_TIMEZONE_INFERENCE',
+                'normalized_utc':explicit.astimezone(timezone.utc).isoformat(),
+            }
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}',text):
+            return {
+                'raw_value':value,
+                'representation':'PARSED_DATE_ONLY_NO_TIMEZONE_INFERENCE',
+                'normalized_date':text,
+            }
+        parsed=parse_time(text)
+        if parsed is not None:
+            return {
+                'raw_value':value,
+                'representation':'PARSED_LOCAL_DATETIME_WITHOUT_TIMEZONE_INFERENCE',
+                'normalized_local':parsed.strftime('%Y-%m-%d %H:%M:%S.%f').rstrip('0').rstrip('.'),
+            }
+        if re.fullmatch(r'\d{13}',text):
+            representation='EPOCH_MILLISECONDS_PRESERVED_TIMEZONE_BASIS_NOT_DECLARED'
+        elif re.fullmatch(r'\d+(?:\.\d+)?',text) and Decimal(text)>0 and Decimal(text)<100000:
+            representation='POSSIBLE_EXCEL_SERIAL_PRESERVED_DATE_SYSTEM_NOT_DECLARED'
+        else:
+            representation='UNPARSED_TIME_TEXT_PRESERVED_NO_TIMEZONE_INFERENCE'
+        return {'raw_value':value,'representation':representation,'normalized_local':None}
+    raise RuntimeError('CAPABILITY_TRANSFORM_NOT_IMPLEMENTED:'+str(transform))
+
+CAPABILITY_JSON_TEXT_FIELDS={
+    'boundary_minutes_json','mark_cycle_mae_candidate_minute_intervals_json',
+    'mark_cycle_mfe_candidate_minute_intervals_json','mark_mae_candidate_minute_intervals_json',
+    'mark_mfe_candidate_minute_intervals_json','market_input_sha256_json',
+    'ordinary_cycle_mae_candidate_minutes_json','ordinary_cycle_mfe_candidate_minutes_json',
+    'ordinary_mae_candidate_minutes_json','ordinary_mfe_candidate_minutes_json',
+    'precision_summary','source_stage_ids_json','source_zip_list_json','source_zip_sha256_list_json','utc_dates_json',
+}
+CAPABILITY_CLASSIFICATION_FIELDS={
+    'from_account','to_account','source_business_type','source_business_type_standard',
+    'cross_source_status','time_in_force','order_create_time_precision','order_update_time_precision',
+    '时间精度','时间边界规则','cycle_cash_result_formula','precision_summary',
+    'ratio_fields_present','均价重建核对','source_category','source_platform','交易来源分类',
+    'order_create_time_source_timezone','order_create_time_source_timezone_basis',
+    'order_create_time_source_timezone_confidence','order_update_time_source_timezone',
+    'order_update_time_source_timezone_basis','order_update_time_source_timezone_confidence',
+    'canonical_cash_inclusion','comparison_operator','condition_role','direction','duplicate_basis',
+    'duplicate_class','is_blocking','is_triggered','maker_only','no_fill_flag',
+    'partial_fill_then_canceled_or_expired','position_side','reduce_only','reused_after_full_validation',
+    'scope','side','side_domain','side_raw','side_standard_cn','side_standard_code','sign_basis','status',
+    'trigger_basis','zip_crc_passed','zip_structure_passed','新编号状态','旧编号保留状态',
+    'Maker/Taker','对当前周期的仓位作用','新增5笔记录性质',
+    'D','E','close_position','order_id_storage','field','warning_codes','checksum_match','interval',
+    '关联等级','条件作用类别',
+}
+CAPABILITY_SOURCE_VALUE_FIELDS={
+    'quantity_source_text',
+}
+CAPABILITY_OBJECT_ID_FIELDS={
+    'source_stage_ids_json','raw__用户ID','对应正式Order','技术Fill ID','快照区间ID',
+    'C','symbol','symbol_raw','symbol_standard','品种','合约','raw__代币名称/币种名称/币对',
+    'asset','base_asset','quote_asset','margin_asset','币种','手续费资产',
+    'primary_key','text','旧P3候选TU','形成阶段Fill ID列表','形成阶段trade_id列表',
+    'mirror_of_source_record_id',
+}
+CAPABILITY_SEQUENCE_FIELDS={'stage_no','事件顺序','费用序号','同毫秒组内顺序'}
+CAPABILITY_DATE_SET_FIELDS={'阶段涉及UTC日期集合','utc_dates_json'}
+CAPABILITY_LINEAGE_FIELDS={
+    '_sheet','_source_row','manual_source_row','source_row_number','source_file','source_h0g_file',
+    'source_screenshot_path','source_dataset','source_sheet','source_zip_list_json','source_zip_sha256_list_json',
+    '技术来源','映射来源SHA-256','来源工作表','来源数据版本','来源文件','来源文件SHA-256','来源行号',
+    '编号来源','账户来源','证据来源工作表','证据来源文件','阶段05来源SHA-256','P3来源SHA-256',
+    '周期主表SHA-256','复合指纹','zip_url','所需aggTrades日包','所需klines日包','所需markPriceKlines日包',
+}
+CAPABILITY_TIMEPOINT_FIELDS={
+    '前一张08:00实际总资产时间','后一张08:00实际总资产时间','开始边界分钟','结束边界分钟',
+    'boundary_minutes_json','mark_cycle_mae_candidate_minute_intervals_json',
+    'mark_cycle_mfe_candidate_minute_intervals_json','mark_mae_candidate_minute_intervals_json',
+    'mark_mfe_candidate_minute_intervals_json','ordinary_cycle_mae_candidate_minutes_json',
+    'ordinary_cycle_mfe_candidate_minutes_json','ordinary_mae_candidate_minutes_json',
+    'ordinary_mfe_candidate_minutes_json',
+    'M','O','stage_start_ms','stage_end_ms_exclusive','持仓开始','持仓结束',
+    '覆盖起点','覆盖终点',
+}
+CAPABILITY_MEASURE_FIELDS={
+    '已实现盈亏（来源事实）','手续费（来源事实）','aggtrades_boundary_minutes_completed',
+    'klines_actual_minutes','klines_missing_minutes','klines_required_minutes','time_difference_seconds',
+    '全部条件委托覆盖秒数','持仓秒数','最大止损空档秒数',
+    '止损未覆盖总秒数','止损覆盖总秒数','止盈覆盖总秒数',
+    '前一张08:00实际总资产','后一张08:00实际总资产',
+    '前一张实际08:00总资产','后一张实际08:00总资产',
+    'candidate_evidence_count','actual_zip_bytes','uncompressed_csv_bytes','head_content_length',
+    'OCR_or_visual_extracted_value','ordinary_cycle_mae','ordinary_cycle_mfe','position_before','position_after',
+    '仓位变化前','仓位变化后','修正差异','全部条件委托覆盖率','加权成交价',
+    '区间canonical事件数','已确认事件滚动到区间末值','已确认资金事件合计',
+    '成交笔数','条件委托总数','止损覆盖率','止盈覆盖率_非风险保护率','正式Fill数','正式Order数','覆盖秒数',
+}
+CAPABILITY_BOOLEAN_OR_FORMAT_SUFFIXES=(
+    '_currency_symbol','_is_empty','_negative_sign','_parenthesis_negative',
+    '_precision_changed','_scientific_notation','_thousand_separator',
+)
+
+def capability_field_semantics(field,is_join_key=False):
+    """Return the one deterministic usage/transform/missing policy for a source field."""
+    if is_join_key:
+        return 'JOIN_KEY','PRESERVE_EXACT_VALUE','REJECT_FOR_SELECTED_JOIN_WITNESS'
+    text=str(field); lower=text.lower()
+    tokens=set(value for value in re.split(r'[^a-z0-9]+',lower) if value)
+    if text in CAPABILITY_CLASSIFICATION_FIELDS or lower.endswith(CAPABILITY_BOOLEAN_OR_FORMAT_SUFFIXES) or lower.endswith('_precision_code'):
+        usage='CLASSIFICATION'
+    elif text in CAPABILITY_OBJECT_ID_FIELDS:
+        usage='OBJECT_ID'
+    elif text in CAPABILITY_SEQUENCE_FIELDS:
+        usage='SEQUENCE'
+    elif text in CAPABILITY_DATE_SET_FIELDS:
+        usage='DATE_SET'
+    elif text in CAPABILITY_SOURCE_VALUE_FIELDS:
+        usage='SOURCE_VALUE'
+    elif text in CAPABILITY_LINEAGE_FIELDS:
+        usage='LINEAGE'
+    elif text in CAPABILITY_TIMEPOINT_FIELDS:
+        usage='TIME'
+    elif text in CAPABILITY_MEASURE_FIELDS:
+        usage='MEASURE'
+    elif lower in {'_sheet','_source_row'} or lower in {'source_path','source_sheet','source_row','row_number'} or any(value in lower for value in (
+        'sha256','checksum','relative_path','file_name','filename','record_hash','mirror_of','zip_inner','verification_tool',
+    )) or any(value in text for value in ('来源SHA','来源行','来源表','来源文件','技术来源','账户来源','编号来源')):
+        usage='LINEAGE'
+    elif lower.endswith('_id') or lower.endswith('_ids') or lower=='tid' or any(value in text for value in ('编号','组ID','记录ID','交易ID','周期ID')):
+        usage='OBJECT_ID'
+    elif 'evidence' in lower or '证据' in text:
+        usage='EVIDENCE'
+    elif any(value in lower for value in (
+        '_status','_type','_direction','_scope','_confidence','_method','_rule','_version','recommendation',
+    )) or any(value in text for value in ('状态','类型','方向','口径','是否','规则版本','映射等级')):
+        usage='CLASSIFICATION'
+    elif (
+        not lower.endswith(('_minutes','_seconds','_duration','_count'))
+        and not any(value in text for value in ('秒数','分钟数','时长'))
+        and (
+            tokens.intersection({'time','timestamp','date','utc','beijing','millisecond','milliseconds'})
+            or lower.endswith(('_time','_timestamp','_utc','_date','_at'))
+            or lower.startswith(('time_','timestamp_','utc_','date_'))
+            or any(value in lower for value in ('_time_','_timestamp_','_utc_','created_at','updated_at'))
+            or any(value in text for value in ('时间','日期','毫秒','开始UTC','结束UTC','周期开始','周期结束'))
+        )
+    ):
+        usage='TIME'
+    elif any(value in lower for value in (
+        'amount','price','quantity','commission','pnl','fee','balance','equity','margin','count','ratio',
+        'multiplier','notional','average','maximum','total_wealth_effect','cash_result','net_exact','duration','minutes','seconds',
+    )) or any(value in text for value in (
+        '数量','金额','价格','盈亏','手续费','成交额','合约乘数','仓位前','仓位后','滚动值','差额','均价','秒数','分钟数','时长',
+    )):
+        usage='MEASURE'
+    elif lower.startswith('/') or lower.endswith('_json') or lower.endswith('_jsonl'):
+        usage='SOURCE_VALUE'
+    else:
+        usage='SOURCE_VALUE'
+    if text in CAPABILITY_JSON_TEXT_FIELDS:
+        transform='PARSE_JSON_TEXT_PRESERVE_RAW'
+    elif usage=='MEASURE':
+        transform='PRESERVE_AND_DECIMAL_CANONICALIZE_IF_NUMERIC'
+    elif usage=='TIME':
+        transform='PRESERVE_TIME_VALUE_WITHOUT_TIMEZONE_INFERENCE'
+    else:
+        transform='PRESERVE_EXACT_VALUE'
+    return usage,transform,'PRESERVE_UNKNOWN'
+
+def capability_apply_field_rule(rule,value,selected_join_field=False):
+    missing=value in (None,'')
+    if missing and rule['missing_policy']=='REJECT_FOR_SELECTED_JOIN_WITNESS' and selected_join_field:
+        raise RuntimeError('CAPABILITY_SELECTED_JOIN_FIELD_MISSING:'+rule['source_field'])
+    if missing:
+        normalized={
+            'status':'UNKNOWN','reason':'SOURCE_FIELD_MISSING_OR_EMPTY',
+            'source_field':rule['source_field'],
+        }
+    else: normalized=capability_transform(rule['transform'],value)
+    if missing:
+        passed=normalized=={'status':'UNKNOWN','reason':'SOURCE_FIELD_MISSING_OR_EMPTY','source_field':rule['source_field']}
+    elif rule['transform']=='PRESERVE_EXACT_VALUE':
+        passed=normalized==value
+    elif rule['transform']=='PRESERVE_AND_DECIMAL_CANONICALIZE_IF_NUMERIC':
+        text=str(value); passed=(normalized==decimal_text(text) if re.fullmatch(r'-?(?:\d+)(?:\.\d+)?',text) else normalized==value)
+    elif rule['transform']=='PARSE_JSON_TEXT_PRESERVE_RAW':
+        passed=(
+            isinstance(value,str)
+            and normalized==normalize_business_value_tree(json.loads(value,parse_float=str,parse_int=str))
+        )
+    elif rule['transform']=='PRESERVE_TIME_VALUE_WITHOUT_TIMEZONE_INFERENCE':
+        allowed={
+            'PARSED_EXPLICIT_OFFSET_DATETIME_NO_TIMEZONE_INFERENCE',
+            'PARSED_DATE_ONLY_NO_TIMEZONE_INFERENCE',
+            'PARSED_LOCAL_DATETIME_WITHOUT_TIMEZONE_INFERENCE',
+            'EPOCH_MILLISECONDS_PRESERVED_TIMEZONE_BASIS_NOT_DECLARED',
+            'POSSIBLE_EXCEL_SERIAL_PRESERVED_DATE_SYSTEM_NOT_DECLARED',
+            'UNPARSED_TIME_TEXT_PRESERVED_NO_TIMEZONE_INFERENCE',
+        }
+        passed=isinstance(normalized,dict) and normalized.get('raw_value')==value and normalized.get('representation') in allowed
+        if passed and normalized['representation']=='PARSED_EXPLICIT_OFFSET_DATETIME_NO_TIMEZONE_INFERENCE':
+            explicit=parse_explicit_offset_datetime(value)
+            passed=explicit is not None and normalized.get('normalized_utc')==explicit.astimezone(timezone.utc).isoformat()
+        elif passed and normalized['representation']=='PARSED_DATE_ONLY_NO_TIMEZONE_INFERENCE':
+            passed=bool(re.fullmatch(r'\d{4}-\d{2}-\d{2}',str(value).strip())) and normalized.get('normalized_date')==str(value).strip()
+        elif passed and normalized['representation']=='PARSED_LOCAL_DATETIME_WITHOUT_TIMEZONE_INFERENCE':
+            parsed=parse_time(str(value).strip())
+            expected_local=(parsed.strftime('%Y-%m-%d %H:%M:%S.%f').rstrip('0').rstrip('.') if parsed is not None else None)
+            passed=normalized.get('normalized_local')==expected_local
+        elif passed and normalized['representation']=='EPOCH_MILLISECONDS_PRESERVED_TIMEZONE_BASIS_NOT_DECLARED':
+            passed=bool(re.fullmatch(r'\d{13}',str(value).strip())) and normalized.get('normalized_local') is None
+        elif passed and normalized['representation']=='POSSIBLE_EXCEL_SERIAL_PRESERVED_DATE_SYSTEM_NOT_DECLARED':
+            text=str(value).strip()
+            passed=bool(re.fullmatch(r'\d+(?:\.\d+)?',text)) and Decimal(text)>0 and Decimal(text)<100000 and normalized.get('normalized_local') is None
+        elif passed and normalized['representation']=='UNPARSED_TIME_TEXT_PRESERVED_NO_TIMEZONE_INFERENCE':
+            text=str(value).strip()
+            explicit=parse_explicit_offset_datetime(text)
+            passed=(
+                explicit is None
+                and parse_time(text) is None
+                and not re.fullmatch(r'\d{4}-\d{2}-\d{2}',text)
+                and not re.fullmatch(r'\d{13}',text)
+                and not (re.fullmatch(r'\d+(?:\.\d+)?',text) and Decimal(text)>0 and Decimal(text)<100000)
+                and normalized.get('normalized_local') is None
+            )
+    else: passed=False
+    return normalized,passed,missing
+
+def run_capability_declarative_profile_witness(operator,source_witnesses,join_witness,output_path,closure_status,execution_status):
+    """Witness a declared operator contract without executing its future business semantics."""
+    implementation=SUPPORTED_OPERATOR_REGISTRY.get(operator)
+    if implementation is None:
+        raise RuntimeError('CAPABILITY_OPERATOR_ID_NOT_REGISTERED:'+str(operator))
+    declarative_profile_id=implementation['declarative_profile_id']; profile=implementation['result_profile']
+    if DECLARATIVE_PROFILE_REGISTRY.get(declarative_profile_id)!=profile:
+        raise RuntimeError('CAPABILITY_DECLARATIVE_PROFILE_NOT_REGISTERED:'+declarative_profile_id)
+    usage_counts=Counter(
+        rule['usage'] for witness in source_witnesses for rule in witness.get('applied_field_rules') or []
+    )
+    common={
+        'witness_status':(
+            'BOUNDED_DECLARATIVE_PROFILE_WITNESS'
+            if closure_status==RUNNABLE_CAPABILITY_STATUS else 'STATUS_GATE_NO_DECLARATIVE_PROFILE_OUTPUT'
+        ),
+        'operator_id':operator,'declarative_profile_id':declarative_profile_id,'result_profile':profile,
+        'output_path':output_path,'source_witness_count':len(source_witnesses),
+        'usage_counts':dict(sorted(usage_counts.items())),
+        'join_status':(join_witness or {}).get('status'),
+        'formal_fact_output_count':0,
+        'business_operator_semantics_executed':False,
+        'claim_limit':'FIELD_MAPPING_JOIN_AND_DECLARATIVE_PROFILE_WITNESS_ONLY; BUSINESS_OPERATOR_SEMANTICS_NOT_EXECUTED; NOT_A_FORMAL_BUSINESS_RESULT',
+    }
+    if closure_status!=RUNNABLE_CAPABILITY_STATUS:
+        common['gate_execution_status']=execution_status
+        common['witness_sha256']=hashlib.sha256(canonical(common).encode('utf-8')).hexdigest()
+        return common
+    profile_details={
+        'CLASSIFICATION':{'classification_field_count':usage_counts['CLASSIFICATION']},
+        'COVERAGE':{'coverage_pair_count':len((join_witness or {}).get('matches') or [])},
+        'IDENTITY':{'identity_field_count':usage_counts['OBJECT_ID']+usage_counts['JOIN_KEY']},
+        'INTEGRITY':{'checked_field_count':sum(usage_counts.values()),'unjoined_binding_count':len((join_witness or {}).get('unjoined_bindings') or [])},
+        'LIFECYCLE':{'time_field_count':usage_counts['TIME'],'relation_pair_count':len((join_witness or {}).get('matches') or [])},
+        'LINEAGE':{'lineage_field_count':usage_counts['LINEAGE'],'source_locators':[item['source_locator'] for item in source_witnesses]},
+        'MEASURE':{'measure_field_count':usage_counts['MEASURE']},
+        'RELATION':{'pairwise_relation_witness_count':sum(match.get('match_scope')=='PAIRWISE_DECLARED_KEY_WITNESS_ONLY' for match in (join_witness or {}).get('matches') or [])},
+        'TIMELINE':{'time_field_count':usage_counts['TIME'],'equal_time_parallel_order_not_inferred':True},
+        'BOUNDARY':{'objective_output_forbidden':True},
+    }
+    if profile not in profile_details:
+        raise RuntimeError('CAPABILITY_DECLARATIVE_PROFILE_NOT_REGISTERED:'+profile)
+    common['profile_result']=profile_details[profile]
+    common['witness_sha256']=hashlib.sha256(canonical(common).encode('utf-8')).hexdigest()
+    return common
+
+def capability_payload_cache(receipts,required_keys=None):
+    cache={}
+    for receipt in receipts:
+        key=(receipt['input_id'],int(receipt['selected_object_index']))
+        if required_keys is not None and key not in required_keys: continue
+        rows=capability_mirror_rows(receipt)
+        indexed=[{
+            'original_index':index,
+            'row':row,
+            'row_sha256':hashlib.sha256(canonical(row).encode('utf-8')).hexdigest(),
+            'source_locator':capability_source_locator(row,index),
+        } for index,row in enumerate(rows)]
+        cache[key]=sorted(indexed,key=lambda item:(item['row_sha256'],item['source_locator']))
+    return cache
+
+def capability_join_witness(item,payload_cache):
+    join=item['assembly_spec']['join']
+    if not join['required']:
+        return {
+            'status':'NOT_REQUIRED_SOURCE_ROWS_REMAIN_SEPARATE','matches':[],
+            'unjoined_bindings':sorted([[binding['input_id'],int(binding['selected_object_index'])] for binding in item['source_bindings']]),
+            'claim_limit':'NO_CROSS_SOURCE_RELATION_OR_FULL_JOIN_CLAIM',
+        },{}
+    matches=[]; selected_rows={}; joined_keys=set()
+    for family in join.get('keys') or []:
+        aliases=family.get('verified_source_aliases') or []
+        canonical_key=family.get('canonical_key') or ''
+        if canonical_key.lower() in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS:
+            raise RuntimeError('CAPABILITY_ROW_LOCATOR_DECLARED_AS_JOIN_KEY:'+item['object_id'])
+        if any(str(alias.get('source_field') or '').lower() in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS for alias in aliases):
+            raise RuntimeError('CAPABILITY_ROW_LOCATOR_ALIAS_DECLARED_AS_JOIN_KEY:'+item['object_id'])
+        value_rows_by_alias=[]
+        for alias in aliases:
+            key=(alias['input_id'],int(alias['selected_object_index'])); value_rows=defaultdict(list)
+            for indexed in payload_cache[key]:
+                for value in capability_join_value(indexed['row'].get(alias['source_field'])):
+                    value_rows[value].append(indexed)
+            value_rows_by_alias.append((alias,key,value_rows))
+        for left_index in range(len(value_rows_by_alias)):
+            for right_index in range(left_index+1,len(value_rows_by_alias)):
+                left,left_key,left_rows=value_rows_by_alias[left_index]
+                right,right_key,right_rows=value_rows_by_alias[right_index]
+                if left_key==right_key: continue
+                common=set(left_rows)&set(right_rows)
+                if not common: continue
+                selected_value=sorted(common)[0]
+                left_row=left_rows[selected_value][0]; right_row=right_rows[selected_value][0]
+                selected_rows.setdefault(left_key,left_row); selected_rows.setdefault(right_key,right_row)
+                match_scope=('COVERAGE_ONLY_NOT_EVENT_IDENTITY' if canonical_key.lower()=='symbol' else 'PAIRWISE_DECLARED_KEY_WITNESS_ONLY')
+                if match_scope=='PAIRWISE_DECLARED_KEY_WITNESS_ONLY':
+                    joined_keys.update((left_key,right_key))
+                matches.append({
+                    'canonical_key':canonical_key,'raw_value':selected_value,
+                    'match_scope':match_scope,
+                    'match_count_left':len(left_rows[selected_value]),'match_count_right':len(right_rows[selected_value]),
+                    'aliases':[
+                        {'input_id':left_key[0],'selected_object_index':left_key[1],'source_field':left['source_field'],'source_locator':left_row['source_locator'],'selected_row_sha256':left_row['row_sha256']},
+                        {'input_id':right_key[0],'selected_object_index':right_key[1],'source_field':right['source_field'],'source_locator':right_row['source_locator'],'selected_row_sha256':right_row['row_sha256']},
+                    ],
+                })
+    if not matches: raise RuntimeError('CAPABILITY_REAL_JOIN_WITNESS_NOT_FOUND:'+item['object_id'])
+    all_keys={(binding['input_id'],int(binding['selected_object_index'])) for binding in item['source_bindings']}
+    has_relation_witness=any(match['match_scope']=='PAIRWISE_DECLARED_KEY_WITNESS_ONLY' for match in matches)
+    return {
+        'status':('EXACT_DECLARED_KEY_PAIR_WITNESSES_ON_LOCKED_MIRRORS' if has_relation_witness else 'COVERAGE_KEY_WITNESS_ONLY_SOURCES_REMAIN_UNJOINED'),
+        'matches':matches,
+        'unjoined_bindings':sorted([list(key) for key in all_keys-joined_keys]),
+        'claim_limit':'PAIRWISE_WITNESSES_ONLY; NO_UNIQUE_OR_FULLY_CONNECTED_BUSINESS_FACT_CLAIM',
+    },selected_rows
+
+def capability_expected_execution_status(closure_status):
+    return {
+        RUNNABLE_CAPABILITY_STATUS:'BOUNDED_REAL_MIRROR_FIELD_AND_JOIN_WITNESS_PASSED',
+        UNRESOLVED_CAPABILITY_STATUS:'UNRESOLVED_NO_CONFIRMED_FACT_EMITTED',
+        BOUNDARY_CAPABILITY_STATUS:'BOUNDARY_NO_OBJECTIVE_FACT_EMITTED',
+        PENDING_CAPABILITY_STATUS:'PENDING_USER_ACCEPTANCE_NO_PRODUCTION_OUTPUT',
+    }.get(closure_status)
+
+def build_capability_witness_receipt(item,receipt_map,payload_cache):
+    operator=item['assembly_spec']['join']['operator']
+    implementation=SUPPORTED_OPERATOR_REGISTRY.get(operator)
+    if implementation is None or DECLARATIVE_PROFILE_REGISTRY.get(implementation['declarative_profile_id'])!=implementation['result_profile']:
+        raise RuntimeError('CAPABILITY_OPERATOR_ID_NOT_REGISTERED:'+operator)
+    closure_status=item['closure_status']
+    execution_status=capability_expected_execution_status(closure_status)
+    if execution_status is None: raise RuntimeError('CAPABILITY_CLOSURE_STATUS_UNSUPPORTED:'+closure_status)
+    source_receipt_identities=[]
+    for binding in item.get('source_bindings') or []:
+        key=(binding['input_id'],int(binding['selected_object_index']))
+        receipt=receipt_map.get(key)
+        if receipt is None: raise RuntimeError('CAPABILITY_RECEIPT_NOT_FOUND:'+item['object_id']+':'+str(key))
+        source_receipt_identities.append({
+            'input_id':key[0],'selected_object_index':key[1],
+            'mirror_path':receipt['mirror_path'],'mirror_sha256':receipt['extracted_content_sha256'],
+            'actual_count':int(receipt['actual_count']),
+        })
+    receipt={
+        'record_type':'CAPABILITY_BOUNDED_EXECUTION_RECEIPT',
+        'capability_id':item['object_id'],'capability_name':item['name'],
+        'operator_id':operator,'operator_version':implementation['version'],
+        'declarative_profile_id':implementation['declarative_profile_id'],'result_profile':implementation['result_profile'],
+        'operator_registry_sha256':operator_registry_sha256(),
+        'closure_status':closure_status,'execution_status':execution_status,
+        'output_path':item['capability_output']['path'],
+        'source_receipt_identities':source_receipt_identities,
+        'source_witnesses':[],'join_witness':None,'declarative_profile_witness':None,
+        'candidate_witness_output_count':0,'formal_fact_output_count':0,
+        'explicit_unknown_field_count':0,
+        'adoption_status':'NOT_FORMALLY_ADOPTED_BY_THIS_BOUNDED_TEST',
+        'scope_statement':'LOCKED_02_MIRRORS_BOUNDED_WITNESS_ONLY_NOT_FULL_136_BUILD',
+        'result_checks':[],
+    }
+    if closure_status!=RUNNABLE_CAPABILITY_STATUS:
+        receipt['join_witness']={'status':'NOT_RUN_BY_CLOSURE_GATE','canonical_key':None,'raw_value':None,'aliases':[]}
+        receipt['declarative_profile_witness']=run_capability_declarative_profile_witness(
+            operator,[],receipt['join_witness'],receipt['output_path'],closure_status,execution_status
+        )
+        receipt['result_checks']=[
+            {'check_id':item['object_id']+'::STATUS_GATE','pass':True,'actual':execution_status},
+            {'check_id':item['object_id']+'::DECLARATIVE_PROFILE_WITNESS','pass':receipt['declarative_profile_witness']['witness_status']=='STATUS_GATE_NO_DECLARATIVE_PROFILE_OUTPUT','actual':receipt['declarative_profile_witness']['declarative_profile_id']},
+            {'check_id':item['object_id']+'::NO_FORMAL_FACT','pass':True,'actual':0},
+        ]
+    else:
+        join_witness,join_rows=capability_join_witness(item,payload_cache)
+        receipt['join_witness']=join_witness
+        joined_bindings={
+            (alias['input_id'],int(alias['selected_object_index']))
+            for match in join_witness.get('matches') or [] if match['match_scope']=='PAIRWISE_DECLARED_KEY_WITNESS_ONLY'
+            for alias in match['aliases']
+        }
+        witnessed_join_fields={
+            (alias['input_id'],int(alias['selected_object_index']),alias['selected_row_sha256'],alias['source_field'])
+            for match in join_witness.get('matches') or [] for alias in match['aliases']
+        }
+        mapped_usage_counts=Counter()
+        for binding in item['source_bindings']:
+            key=(binding['input_id'],int(binding['selected_object_index']))
+            indexed=join_rows.get(key) or payload_cache[key][0]
+            raw_values={}; normalized_values={}; field_checks=[]; applied_field_rules=[]
+            for rule in binding['field_rules']:
+                field=rule['source_field']; value=indexed['row'].get(field)
+                raw_values[field]=value
+                normalized,passed,missing=capability_apply_field_rule(
+                    rule,value,(key[0],key[1],indexed['row_sha256'],field) in witnessed_join_fields
+                )
+                normalized_values[field]=normalized
+                receipt['explicit_unknown_field_count']+=int(missing)
+                mapped_usage_counts[rule['usage']]+=1
+                field_checks.append({'source_field':field,'check':rule['result_check'],'pass':passed})
+                applied_field_rules.append({
+                    'source_field':field,'usage':rule['usage'],'transform':rule['transform'],
+                    'missing_policy':rule['missing_policy'],'raw_output_path':rule['raw_output_path'],
+                    'normalized_output_path':rule['normalized_output_path'],
+                })
+            receipt['source_witnesses'].append({
+                'input_id':key[0],'selected_object_index':key[1],
+                'source_locator':indexed['source_locator'],'selected_row_sha256':indexed['row_sha256'],
+                'relation_participation':('MATCHED_IN_DECLARED_KEY_WITNESS' if key in joined_bindings else 'INDEPENDENT_CONTEXT_OR_PROJECTION_SOURCE'),
+                'raw_value':raw_values,'normalized_value':normalized_values,
+                'field_checks':field_checks,'applied_field_rules':applied_field_rules,
+            })
+        profile_pass=bool(receipt['source_witnesses']) and all(
+            check['pass'] for witness in receipt['source_witnesses'] for check in witness['field_checks']
+        )
+        allowed_join_status=(
+            join_witness['status']=='EXACT_DECLARED_KEY_PAIR_WITNESSES_ON_LOCKED_MIRRORS'
+            or (
+                implementation['result_profile']=='COVERAGE'
+                and join_witness['status']=='COVERAGE_KEY_WITNESS_ONLY_SOURCES_REMAIN_UNJOINED'
+            )
+        )
+        if item['assembly_spec']['join']['required']:
+            profile_pass=profile_pass and allowed_join_status
+        receipt['candidate_witness_output_count']=len(receipt['source_witnesses'])
+        receipt['all_bindings_connected']=len(join_witness.get('unjoined_bindings') or [])==0
+        receipt['declarative_profile_witness']=run_capability_declarative_profile_witness(
+            operator,receipt['source_witnesses'],join_witness,receipt['output_path'],closure_status,execution_status
+        )
+        receipt['result_checks']=[
+            {'check_id':item['object_id']+'::ALL_BOUND_SOURCES_WITNESSED','pass':len(receipt['source_witnesses'])==len(item['source_bindings']),'actual':len(receipt['source_witnesses'])},
+            {'check_id':item['object_id']+'::ALL_FIELD_RULES_APPLIED','pass':profile_pass,'actual':sum(mapped_usage_counts.values())},
+            {'check_id':item['object_id']+'::DECLARED_JOIN_BEHAVIOR','pass':(not item['assembly_spec']['join']['required'] or allowed_join_status),'actual':join_witness['status']},
+            {'check_id':item['object_id']+'::DECLARATIVE_PROFILE_WITNESS','pass':receipt['declarative_profile_witness']['witness_status']=='BOUNDED_DECLARATIVE_PROFILE_WITNESS','actual':receipt['declarative_profile_witness']['declarative_profile_id']},
+            {'check_id':item['object_id']+'::OUTPUT_PATH','pass':receipt['output_path']==item['output_location'],'actual':receipt['output_path']},
+            {'check_id':item['object_id']+'::NO_FORMAL_FACT','pass':receipt['formal_fact_output_count']==0,'actual':0},
+        ]
+    if not all(check['pass'] for check in receipt['result_checks']):
+        raise RuntimeError('CAPABILITY_RESULT_CHECK_FAILED:'+item['object_id'])
+    receipt['receipt_sha256']=hashlib.sha256(canonical(receipt).encode('utf-8')).hexdigest()
+    return receipt
+
+def execute_capability_bounded_witnesses(capability_records,receipts,require_expected=True):
+    receipt_map={(item['input_id'],int(item['selected_object_index'])):item for item in receipts}
+    required_keys={
+        (binding['input_id'],int(binding['selected_object_index']))
+        for item in capability_records if item.get('closure_status')==RUNNABLE_CAPABILITY_STATUS
+        for binding in item.get('source_bindings') or []
+    }
+    payload_cache=capability_payload_cache(receipts,required_keys)
+    execution_receipts=[]
+    for item in sorted(capability_records,key=lambda row:row['object_id']):
+        execution=build_capability_witness_receipt(item,receipt_map,payload_cache)
+        expected=(item.get('bounded_execution_contract') or {}).get('expected_receipt_sha256')
+        if require_expected and execution['receipt_sha256']!=expected:
+            raise RuntimeError('CAPABILITY_WITNESS_RECEIPT_MISMATCH:'+item['object_id'])
+        execution_receipts.append(execution)
+    status_counts=Counter(item['execution_status'] for item in execution_receipts)
+    operator_ids={item['operator_id'] for item in execution_receipts}
+    overall_sha=hashlib.sha256(('\n'.join(canonical(item) for item in execution_receipts)+'\n').encode('utf-8')).hexdigest()
+    return execution_receipts,{
+        'receipt_count':len(execution_receipts),'operator_count':len(operator_ids),
+        'operator_ids_exact':operator_ids==set(SUPPORTED_OPERATOR_REGISTRY),
+        'execution_status_counts':dict(sorted(status_counts.items())),
+        'all_result_checks_pass':all(all(check['pass'] for check in item['result_checks']) for item in execution_receipts),
+        'formal_fact_output_count':sum(item['formal_fact_output_count'] for item in execution_receipts),
+        'candidate_witness_output_count':sum(item['candidate_witness_output_count'] for item in execution_receipts),
+        'declarative_profile_witness_count':sum(item.get('declarative_profile_witness') is not None for item in execution_receipts),
+        'runnable_declarative_profile_witness_count':sum(item.get('declarative_profile_witness',{}).get('witness_status')=='BOUNDED_DECLARATIVE_PROFILE_WITNESS' for item in execution_receipts),
+        'status_gate_declarative_profile_witness_count':sum(item.get('declarative_profile_witness',{}).get('witness_status')=='STATUS_GATE_NO_DECLARATIVE_PROFILE_OUTPUT' for item in execution_receipts),
+        'all_business_operator_semantics_not_executed':all(item.get('declarative_profile_witness',{}).get('business_operator_semantics_executed') is False for item in execution_receipts),
+        'explicit_unknown_field_count':sum(item.get('explicit_unknown_field_count',0) for item in execution_receipts),
+        'execution_receipts_sha256':overall_sha,
+        'scope_statement':'LOCKED_02_MIRRORS_BOUNDED_WITNESS_ONLY_NOT_FULL_136_BUILD_OR_FORMAL_ADOPTION',
+    }
 
 def recompute_target_minute_mark_synthetic(node_time_utc,source_available,quantity,contract_multiplier,entry_price,mark_low,mark_high,side):
     if source_available is not True: raise ValueError('SYNTHETIC_MARK_SOURCE_UNAVAILABLE')
@@ -542,16 +1242,41 @@ def receipt_schema_fields(receipt):
         with open(mirror,encoding='utf-8-sig',newline='') as handle:
             return set(next(csv.reader(handle)))
     if mirror.suffix=='.jsonl':
+        fields=set()
         with open(mirror,encoding='utf-8') as handle:
-            first=next((json.loads(line) for line in handle if line.strip()),{})
-        return set(first)
+            for line in handle:
+                if line.strip():
+                    value=json.loads(line)
+                    if not isinstance(value,dict):
+                        raise RuntimeError('CAPABILITY_RECEIPT_JSONL_RECORD_NOT_OBJECT:'+str(mirror))
+                    fields.update(value)
+        return fields
     if mirror.suffix=='.json':
         value=json.load(open(mirror,encoding='utf-8'))
-        return (set(value)|{'/'+str(key) for key in value}) if isinstance(value,dict) else set()
+        return set(value) if isinstance(value,dict) else set()
     raise RuntimeError('CAPABILITY_RECEIPT_MIRROR_TYPE_UNSUPPORTED:'+mirror.suffix)
 
 def validate_capability_specs(capability_records,adoption_records,schema,receipts):
     if len(capability_records)!=94: raise RuntimeError('CAPABILITY_SPEC_COUNT_MISMATCH')
+    if len(SUPPORTED_OPERATOR_REGISTRY)!=33 or set(SUPPORTED_OPERATOR_REGISTRY)!={
+        'ACTIVE_AND_COPY_SCOPE_PARTITION','ADJACENT_REVERSE_POSITION_OBJECTIVE_LINKAGE','ANALYSIS_STRATEGY_AND_COUNTERFACTUAL_BOUNDARY',
+        'CANONICAL_CASH_EVENT_DEDUPLICATION_AND_TRANSFER_PAIRING','CONDITION_TO_ORDER_FILL_AND_CYCLE_RELATION_GRAPH',
+        'FACT_USER_STATEMENT_INTERPRETATION_AND_STATUS_LAYERING','FEE_AND_NET_RESULT_COMPONENT_SEPARATION',
+        'FILL_PRICE_AND_WEIGHTED_AVERAGE_TRANSITION','FILL_TO_ORDER_AND_CYCLE_LINKAGE','FUTURE_SCHEMA_AND_FORMAT_BOUNDARY',
+        'IDENTIFIER_MAPPING_WITHOUT_ID_REPLACEMENT','IDENTITY_RESOLUTION_WITH_SOURCE_BOUNDARIES',
+        'MARGIN_AND_RISK_FIELDS_SEPARATED_NO_INFERENCE_FOR_MISSING_VALUES','MARKET_DATA_IDENTITY_WINDOW_AND_COVERAGE',
+        'MFE_MAE_BY_CYCLE_OR_POSITION_STAGE','NON_OBJECTIVE_USER_REASON_BOUNDARY','OBJECTIVE_ACTION_CLASSIFICATION_WITH_EVIDENCE',
+        'ORDER_AND_CONDITION_LIFECYCLE_LINKAGE','POSITION_QUANTITY_STATE_TRANSITION','POSITION_ZERO_TO_NONZERO_TO_ZERO_CYCLE_GROUPING',
+        'REALIZED_PNL_BY_FILL_AND_CYCLE','REFERENTIAL_AND_QUANTITY_INTEGRITY_CHECKS','SCREENSHOT_CONDITION_AND_CYCLE_LINEAGE_BRIDGE',
+        'SIDE_POSITION_SIDE_AND_POSITION_EFFECT_SEPARATION','STABLE_ID_AND_SOURCE_NAMESPACE_PRESERVATION',
+        'STOP_LOSS_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION','TAKE_PROFIT_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION',
+        'TIMELINE_UNION_PRESERVE_EQUAL_TIME_PARALLEL_EVENTS','TIME_BOUNDED_EQUITY_ANCHORS_AND_UNKNOWN_GAPS',
+        'TIME_NORMALIZATION_WITH_ORIGINAL_VALUE_AND_PRECISION','USER_INTERFACE_PRODUCT_BOUNDARY',
+        'USER_STAGE_AGGREGATION_ACROSS_POSITION_PRICE_AND_MFE_MAE_COMPONENTS','VERSION_CORRECTION_AND_SOURCE_IDENTITY_LINEAGE',
+    }:
+        raise RuntimeError('CAPABILITY_OPERATOR_REGISTRY_SET_INVALID')
+    if any(DECLARATIVE_PROFILE_REGISTRY.get(item['declarative_profile_id'])!=item['result_profile'] for item in SUPPORTED_OPERATOR_REGISTRY.values()):
+        raise RuntimeError('CAPABILITY_DECLARATIVE_PROFILE_NOT_REGISTERED')
     ids=[item['object_id'] for item in capability_records]
     if len(set(ids))!=94: raise RuntimeError('CAPABILITY_SPEC_ID_DUPLICATE')
     input_ids={item['input_id'] for item in adoption_records}
@@ -568,7 +1293,7 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
         'KEEP_SOURCE_FACTS_SEPARATE_AND_MARK_RELATION_UNKNOWN; '
         'NEVER_JOIN_BY_ROW_ORDER_OR_SIMILAR_TEXT'
     )
-    status_counts=Counter(); binding_count=0; field_binding_count=0
+    status_counts=Counter(); binding_count=0; field_binding_count=0; unique_source_fields=set(); seen_operators=set()
     for item in capability_records:
         spec=item.get('assembly_spec')
         if not isinstance(spec,dict): raise RuntimeError('CAPABILITY_ASSEMBLY_SPEC_MISSING:'+item['object_id'])
@@ -596,10 +1321,17 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
                     raise RuntimeError('CAPABILITY_SELECTOR_IDENTITY_MISMATCH:'+item['object_id']+':'+str(key))
                 if int(binding['selector_reference'].get('selected_object_index',-1))!=int(selected_index):
                     raise RuntimeError('CAPABILITY_SELECTOR_OBJECT_INDEX_MISMATCH:'+item['object_id']+':'+str(key))
-                missing=set(binding['source_fields'])-receipt_schema_fields(receipt)
-                if missing: raise RuntimeError('CAPABILITY_SOURCE_FIELD_MISSING:'+item['object_id']+':'+','.join(sorted(missing)))
+                declared_fields=set(binding['source_fields'])
+                actual_fields=receipt_schema_fields(receipt)
+                missing=actual_fields-declared_fields
+                extra=declared_fields-actual_fields
+                if missing or extra:
+                    raise RuntimeError(
+                        'CAPABILITY_SOURCE_FIELD_SCOPE_MISMATCH:'+item['object_id']
+                        +':missing='+','.join(sorted(missing))+':extra='+','.join(sorted(extra))
+                    )
                 binding_scope[(binding['input_id'],int(selected_index))]=set(binding['source_fields'])
-                binding_count+=1; field_binding_count+=len(binding['source_fields'])
+                binding_count+=1; field_binding_count+=len(binding['source_fields']); unique_source_fields.update(binding['source_fields'])
         declared={
             'MAIN':[] if item.get('unique_main_source_candidate') is None else ([item['unique_main_source_candidate']] if isinstance(item['unique_main_source_candidate'],str) else item['unique_main_source_candidate']),
             'SUPPLEMENT':item.get('supplement_source_candidates') or [],
@@ -670,8 +1402,27 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
         if not isinstance(contract,dict): raise RuntimeError('CAPABILITY_ASSEMBLY_CONTRACT_MISSING:'+item['object_id'])
         join=spec.get('join')
         if not isinstance(join,dict) or 'required' not in join: raise RuntimeError('CAPABILITY_JOIN_SPEC_MISSING:'+item['object_id'])
+        for key_family in join.get('keys') or []:
+            if str(key_family.get('canonical_key') or '').lower() in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS:
+                raise RuntimeError('CAPABILITY_ROW_LOCATOR_DECLARED_AS_JOIN_KEY:'+item['object_id'])
+            if any(str(alias.get('source_field') or '').lower() in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS for alias in key_family.get('verified_source_aliases') or []):
+                raise RuntimeError('CAPABILITY_ROW_LOCATOR_ALIAS_DECLARED_AS_JOIN_KEY:'+item['object_id'])
         if not join.get('operator') or join['operator']!=contract.get('operator'):
             raise RuntimeError('CAPABILITY_JOIN_OPERATOR_MISMATCH:'+item['object_id'])
+        operator=join['operator']; implementation=SUPPORTED_OPERATOR_REGISTRY.get(operator)
+        if implementation is None or DECLARATIVE_PROFILE_REGISTRY.get(implementation.get('declarative_profile_id'))!=implementation.get('result_profile'):
+            raise RuntimeError('CAPABILITY_OPERATOR_ID_NOT_REGISTERED:'+operator)
+        seen_operators.add(operator)
+        operator_contract=item.get('operator_contract')
+        expected_operator_contract={
+            'operator_id':operator,'operator_version':implementation['version'],
+            'declarative_profile_id':implementation['declarative_profile_id'],'result_profile':implementation['result_profile'],
+            'registry_version':OPERATOR_REGISTRY_VERSION,'registry_sha256':operator_registry_sha256(),
+            'business_operator_semantics_executed':False,
+            'contract_scope':'DECLARATIVE_OPERATOR_ID_AND_PROFILE; BUSINESS_SEMANTICS_NOT_EXECUTED_IN_FIRST_PACKAGE',
+        }
+        if operator_contract!=expected_operator_contract:
+            raise RuntimeError('CAPABILITY_OPERATOR_CONTRACT_MISMATCH:'+item['object_id'])
         if join.get('missing_join_key_behavior')!=contract.get('missing_join_key_behavior'):
             raise RuntimeError('CAPABILITY_MISSING_JOIN_KEY_BEHAVIOR_MISMATCH:'+item['object_id'])
         if join.get('missing_join_key_behavior')!=required_missing_join_key_behavior:
@@ -680,6 +1431,9 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
             raise RuntimeError('CAPABILITY_JOIN_CONTRACT_MISMATCH:'+item['object_id'])
         if canonical(join.get('keys') or [])!=canonical(contract.get('join_key_families') or []):
             raise RuntimeError('CAPABILITY_JOIN_KEYS_CONTRACT_MISMATCH:'+item['object_id'])
+        forbidden_locator_keys=FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS
+        if any(str(family.get('canonical_key') or '').lower() in forbidden_locator_keys for family in join.get('keys') or []):
+            raise RuntimeError('CAPABILITY_ROW_LOCATOR_DECLARED_AS_JOIN_KEY:'+item['object_id'])
         for detailed in detailed_bindings:
             relation=detailed.get('relation') or {}
             if relation.get('operator')!=join.get('operator') or relation.get('direction')!=join.get('direction') or relation.get('cardinality')!=join.get('cardinality'):
@@ -693,6 +1447,41 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
             actual_join_keys=sorted((value.get('canonical_key'),value.get('source_field')) for value in detailed.get('join_keys') or [])
             if expected_join_keys!=actual_join_keys:
                 raise RuntimeError('CAPABILITY_DETAILED_JOIN_KEY_MISMATCH:'+item['object_id']+':'+str(key))
+            rules=detailed.get('field_rules')
+            if not isinstance(rules,list) or len(rules)!=len(detailed.get('source_fields_or_pointers') or []):
+                raise RuntimeError('CAPABILITY_FIELD_RULE_COUNT_MISMATCH:'+item['object_id']+':'+str(key))
+            if [rule.get('source_field') for rule in rules]!=(detailed.get('source_fields_or_pointers') or []):
+                raise RuntimeError('CAPABILITY_FIELD_RULE_ORDER_OR_SCOPE_MISMATCH:'+item['object_id']+':'+str(key))
+            if len({rule.get('source_field') for rule in rules})!=len(rules):
+                raise RuntimeError('CAPABILITY_FIELD_RULE_DUPLICATE:'+item['object_id']+':'+str(key))
+            alias_fields={
+                value.get('source_field') for value in detailed.get('join_keys') or []
+                if str(value.get('canonical_key') or '').lower() not in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS
+            }
+            for rule in rules:
+                field=rule['source_field']
+                binding_key=key[0]+'#'+str(key[1])
+                expected_raw=output['path']+'.source_witnesses['+canonical(binding_key)+'].raw_value['+canonical(field)+']'
+                expected_normalized=output['path']+'.source_witnesses['+canonical(binding_key)+'].normalized_value['+canonical(field)+']'
+                if rule.get('raw_output_path')!=expected_raw or rule.get('normalized_output_path')!=expected_normalized:
+                    raise RuntimeError('CAPABILITY_FIELD_OUTPUT_MAPPING_INVALID:'+item['object_id']+':'+field)
+                expected_usage,expected_transform,expected_missing=capability_field_semantics(field,field in alias_fields)
+                if rule.get('usage')!=expected_usage:
+                    raise RuntimeError('CAPABILITY_FIELD_USAGE_SEMANTIC_MISMATCH:'+item['object_id']+':'+field)
+                if rule.get('transform') not in SUPPORTED_CAPABILITY_TRANSFORMS:
+                    raise RuntimeError('CAPABILITY_TRANSFORM_NOT_IMPLEMENTED:'+str(rule.get('transform')))
+                if rule.get('transform')!=expected_transform:
+                    raise RuntimeError('CAPABILITY_FIELD_TRANSFORM_SEMANTIC_MISMATCH:'+item['object_id']+':'+field)
+                if rule.get('missing_policy')!=expected_missing or rule.get('result_check')!=FIELD_RESULT_CHECK:
+                    raise RuntimeError('CAPABILITY_FIELD_RULE_POLICY_INVALID:'+item['object_id']+':'+field)
+            assembly_binding=next(
+                binding for binding in bindings
+                if binding['input_id']==key[0] and int(binding['selected_object_indexes'][0])==key[1]
+            )
+            if assembly_binding.get('field_rules')!=rules:
+                raise RuntimeError('CAPABILITY_FIELD_RULE_MIRROR_MISMATCH:'+item['object_id']+':'+str(key))
+        if item.get('operator_parameters')!=capability_operator_parameters(item):
+            raise RuntimeError('CAPABILITY_OPERATOR_PARAMETERS_MISMATCH:'+item['object_id'])
         if join['required']:
             if not join.get('keys') or not join.get('direction') or not join.get('cardinality'):
                 raise RuntimeError('CAPABILITY_JOIN_DETAIL_MISSING:'+item['object_id'])
@@ -702,6 +1491,8 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
             if not key_family.get('canonical_key') or not key_family.get('verified_source_aliases'):
                 raise RuntimeError('CAPABILITY_JOIN_KEY_FAMILY_INVALID:'+item['object_id'])
             for alias in key_family['verified_source_aliases']:
+                if str(alias.get('source_field') or '').lower() in forbidden_locator_keys:
+                    raise RuntimeError('CAPABILITY_ROW_LOCATOR_ALIAS_DECLARED_AS_JOIN_KEY:'+item['object_id'])
                 key=(alias.get('input_id'),int(alias.get('selected_object_index',-1)))
                 if key not in binding_scope or alias.get('source_field') not in binding_scope[key]:
                     raise RuntimeError('CAPABILITY_JOIN_ALIAS_OUTSIDE_BINDING:'+item['object_id']+':'+str(key)+':'+str(alias.get('source_field')))
@@ -738,15 +1529,61 @@ def validate_capability_specs(capability_records,adoption_records,schema,receipt
         }
         if check_map['UNRESOLVED_OR_PENDING_CAPABILITY_CANNOT_EMIT_CONFIRMED_FACT'].get('expected') is not no_confirmed_fact:
             raise RuntimeError('CAPABILITY_UNRESOLVED_GATE_EXPECTATION_MISMATCH:'+item['object_id'])
+        execution_plan=item.get('execution_plan')
+        expected_plan={
+            'read_policy':'02_LOCKED_READ_ONLY_MIRRORS_ONLY',
+            'source_row_selection':'CANONICAL_ROW_SHA256_THEN_SOURCE_LOCATOR',
+            'max_witness_rows_per_binding':1,
+            'declarative_profile_id':implementation['declarative_profile_id'],
+            'business_operator_semantics_execution':'NOT_AUTHORIZED_NOT_RUN',
+            'join_policy':'EXACT_DECLARED_KEY_VALUE_ONLY; UNJOINED_BINDINGS_REMAIN_SEPARATE',
+            'output_policy':'BOUNDED_WITNESS_RECEIPT_ONLY_NO_FORMAL_FACT',
+        }
+        if execution_plan!=expected_plan:
+            raise RuntimeError('CAPABILITY_EXECUTION_PLAN_MISMATCH:'+item['object_id'])
+        result_contract=item.get('capability_result_contract')
+        expected_execution_status=capability_expected_execution_status(item['closure_status'])
+        if not isinstance(result_contract,dict):
+            raise RuntimeError('CAPABILITY_RESULT_CONTRACT_MISSING:'+item['object_id'])
+        expected_result_contract={
+            'expected_execution_status':expected_execution_status,
+            'expected_output_path':output['path'],
+            'expected_bound_source_count':len(detailed_bindings),
+            'expected_formal_fact_output_count':0,
+            'required_checks':[
+                'ALL_BOUND_SOURCES_WITNESSED_OR_STATUS_GATE_APPLIED','ALL_FIELD_RULES_APPLIED_OR_STATUS_GATE_APPLIED',
+                'DECLARED_JOIN_BEHAVIOR_CHECKED','DECLARATIVE_PROFILE_WITNESS_EXECUTED_OR_STATUS_GATE_APPLIED',
+                'OUTPUT_PATH_EXACT','NO_FORMAL_FACT_EMITTED',
+            ],
+        }
+        if result_contract!=expected_result_contract:
+            raise RuntimeError('CAPABILITY_RESULT_CONTRACT_MISMATCH:'+item['object_id'])
+        bounded_contract=item.get('bounded_execution_contract')
+        if not isinstance(bounded_contract,dict) or bounded_contract.get('mirror_authority')!='02_输入身份_选择器与装载回执候选.jsonl':
+            raise RuntimeError('CAPABILITY_BOUNDED_EXECUTION_CONTRACT_MISSING:'+item['object_id'])
+        if bounded_contract.get('expected_execution_status')!=expected_execution_status:
+            raise RuntimeError('CAPABILITY_BOUNDED_EXECUTION_STATUS_MISMATCH:'+item['object_id'])
+        if not re.fullmatch(r'[0-9a-f]{64}',str(bounded_contract.get('expected_receipt_sha256') or '')):
+            raise RuntimeError('CAPABILITY_BOUNDED_RECEIPT_HASH_INVALID:'+item['object_id'])
         sample_status=spec.get('bounded_sample_status')
-        if sample_status not in {'NOT_YET_RUN','NOT_YET_RUN_GAP_MUST_REMAIN_EXPLICIT','NOT_APPLICABLE_BOUNDARY_ONLY','NOT_AUTHORIZED_PENDING_USER_ACCEPTANCE'}:
+        if sample_status not in {
+            'BOUNDED_REAL_MIRROR_FIELD_AND_JOIN_WITNESS_PASSED','UNRESOLVED_NO_CONFIRMED_FACT_EMITTED',
+            'BOUNDARY_NO_OBJECTIVE_FACT_EMITTED','PENDING_USER_ACCEPTANCE_NO_PRODUCTION_OUTPUT',
+        }:
             raise RuntimeError('CAPABILITY_SAMPLE_STATUS_INVALID:'+item['object_id'])
+        if sample_status!=expected_execution_status:
+            raise RuntimeError('CAPABILITY_SAMPLE_STATUS_RESULT_MISMATCH:'+item['object_id'])
         status_counts[sample_status]+=1
+    if seen_operators!=set(SUPPORTED_OPERATOR_REGISTRY):
+        raise RuntimeError('CAPABILITY_OPERATOR_REGISTRY_COVERAGE_MISMATCH')
     return {
         'capability_count':94,
         'source_binding_applications_checked':binding_count,
         'source_fields_checked':field_binding_count,
+        'unique_source_fields_checked':len(unique_source_fields),
         'bounded_sample_status_counts':dict(sorted(status_counts.items())),
+        'operator_registry_count':len(seen_operators),
+        'operator_registry_sha256':operator_registry_sha256(),
         'all_specs_machine_valid':True,
         'candidate_specs_are_not_formal_adoption':True,
     }
@@ -1042,6 +1879,10 @@ def validate_fact_base_against_schema(records,schema):
         if not source_id or not target_id or source_id not in fact_records or target_id not in fact_records:
             raise RuntimeError('FACT_BASE_RELATION_ENDPOINT_INVALID:'+record['fact_id'])
         if relation.get('direction')!='SOURCE_TO_TARGET': raise RuntimeError('FACT_BASE_RELATION_DIRECTION_INVALID:'+record['fact_id'])
+        if not relation.get('source_event_id'):
+            raise RuntimeError('FACT_BASE_RELATION_SOURCE_EVENT_MISSING:'+record['fact_id'])
+        if fact_records[source_id].get('source_event_id')!=relation['source_event_id']:
+            raise RuntimeError('FACT_BASE_EVENT_SOURCE_MISMATCH:'+record['fact_id'])
         if relation.get('target_event_id'):
             if fact_records[target_id].get('source_event_id')!=relation['target_event_id']:
                 raise RuntimeError('FACT_BASE_EVENT_TARGET_MISMATCH:'+record['fact_id'])
@@ -1087,6 +1928,7 @@ def validate_fact_base_against_schema(records,schema):
         'object_target_relation_count':object_target_relations,
         'object_target_relation_evidence_counts':dict(sorted(object_target_evidence.items())),
         'all_relations_resolve_to_fact_statements':True,
+        'all_relation_source_events_match_source_facts':True,
         'normalized_business_numbers_are_strings':True,
     }
 
@@ -1297,7 +2139,91 @@ def uncertainty_plain(record):
     if record.get('evidence_status')=='CANDIDATE': parts.append('关系或结论仍是候选，不能当作已确定事实')
     return '；'.join(parts) if parts else '未发现需要单独提示的未知、候选或冲突'
 
-def build_workbook_payload(records, sample_manifest, receipts, contract_id):
+def technical_chunk_rows(records,limit=EXCEL_SAFE_CELL_LIMIT_UTF16):
+    rows=[]
+    for record in records:
+        complete=canonical(record)
+        chunks=split_utf16_safe(complete,limit)
+        complete_sha=hashlib.sha256(complete.encode('utf-8')).hexdigest()
+        for index,chunk in enumerate(chunks,1):
+            rows.append({
+                '顺序':record['stable_display_sequence'],
+                '对象入口':record['navigation_object_id'],
+                '记录类型':record['record_type'],
+                '事实ID':record['fact_id'],
+                '第几段':index,
+                '一共几段':len(chunks),
+                '本段UTF-16长度':utf16_units(chunk),
+                '完整原文UTF-16长度':utf16_units(complete),
+                '完整原文SHA-256':complete_sha,
+                '技术原文分段':chunk,
+            })
+    validate_technical_chunk_rows(rows,records,limit)
+    return rows
+
+def validate_technical_chunk_rows(rows,records,limit=EXCEL_SAFE_CELL_LIMIT_UTF16):
+    if not isinstance(limit,int) or limit<=0 or limit>EXCEL_DOCUMENTED_CELL_LIMIT_UTF16:
+        raise RuntimeError('EXCEL_TECHNICAL_CHUNK_LIMIT_INVALID')
+    expected_by_id={record['fact_id']:record for record in records}
+    if len(expected_by_id)!=len(records):
+        raise RuntimeError('EXCEL_TECHNICAL_SOURCE_FACT_ID_DUPLICATE')
+    grouped=defaultdict(list)
+    physical_order=[]
+    for row in rows:
+        fact_id=row.get('事实ID')
+        if fact_id not in expected_by_id:
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_FACT_ID_UNKNOWN:'+str(fact_id))
+        if not physical_order or physical_order[-1]!=fact_id:
+            physical_order.append(fact_id)
+        grouped[fact_id].append(row)
+    expected_order=[record['fact_id'] for record in records]
+    if physical_order!=expected_order or set(grouped)!=set(expected_by_id):
+        raise RuntimeError('EXCEL_TECHNICAL_CHUNK_RECORD_ORDER_OR_COVERAGE_MISMATCH')
+    for fact_id,record in expected_by_id.items():
+        group=grouped[fact_id]; total=len(group)
+        if [int(row.get('第几段',0)) for row in group]!=list(range(1,total+1)):
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_INDEX_GAP:'+fact_id)
+        if any(int(row.get('一共几段',0))!=total for row in group):
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_TOTAL_MISMATCH:'+fact_id)
+        complete=canonical(record); complete_units=utf16_units(complete)
+        complete_sha=hashlib.sha256(complete.encode('utf-8')).hexdigest()
+        if any(
+            int(row.get('顺序',0))!=int(record['stable_display_sequence'])
+            or row.get('对象入口')!=record['navigation_object_id']
+            or row.get('记录类型')!=record['record_type']
+            or int(row.get('本段UTF-16长度',-1))!=utf16_units(row.get('技术原文分段',''))
+            or int(row.get('完整原文UTF-16长度',-1))!=complete_units
+            or row.get('完整原文SHA-256')!=complete_sha
+            or utf16_units(row.get('技术原文分段',''))>limit
+            for row in group
+        ):
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_METADATA_MISMATCH:'+fact_id)
+        reassembled=''.join(row['技术原文分段'] for row in group)
+        if reassembled!=complete or hashlib.sha256(reassembled.encode('utf-8')).hexdigest()!=complete_sha:
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_REASSEMBLY_MISMATCH:'+fact_id)
+        if json.loads(reassembled)!=record:
+            raise RuntimeError('EXCEL_TECHNICAL_CHUNK_JSON_REASSEMBLY_MISMATCH:'+fact_id)
+    chunk_counts=Counter(len(group) for group in grouped.values())
+    multi=[{
+        'fact_id':fact_id,
+        'complete_utf16_units':int(group[0]['完整原文UTF-16长度']),
+        'complete_utf8_sha256':group[0]['完整原文SHA-256'],
+        'chunk_count':len(group),
+        'chunk_utf16_units':[int(row['本段UTF-16长度']) for row in group],
+    } for fact_id,group in grouped.items() if len(group)>1]
+    return {
+        'source_record_count':len(records),
+        'chunk_row_count':len(rows),
+        'single_chunk_record_count':chunk_counts.get(1,0),
+        'multi_chunk_record_count':sum(count for size,count in chunk_counts.items() if size>1),
+        'extra_chunk_row_count':len(rows)-len(records),
+        'maximum_source_record_utf16_units':max(utf16_units(canonical(record)) for record in records),
+        'maximum_chunk_utf16_units':max(utf16_units(row['技术原文分段']) for row in rows),
+        'reassembled_record_count':len(grouped),
+        'multi_chunk_records':multi,
+    }
+
+def build_workbook_payload(records, sample_manifest, receipts, contract_id,technical_cell_limit=EXCEL_SAFE_CELL_LIMIT_UTF16):
     facts=[record for record in records if record['record_type']=='FACT_STATEMENT']
     endpoint_facts=[record for record in facts if record.get('fact_subtype')=='RELATION_TARGET_OBJECT_REFERENCE']
     event_facts=[record for record in facts if record.get('fact_subtype')!='RELATION_TARGET_OBJECT_REFERENCE']
@@ -1394,7 +2320,7 @@ def build_workbook_payload(records, sample_manifest, receipts, contract_id):
         input_rows.append({'记录类别':'困难样本','输入编号或样本类别':category,'对象序号':'','对象或选中范围':item['stable_id'],'来源文件':'09_有界验证样本清单候选.json中的确定性选择','选择器':selector_text,'装载数量':'','当前状态':'本工作包有界测试样本','能证明':'样本覆盖该困难情形。','不能证明':item.get('relationship_boundary') or item.get('relation_boundary') or item.get('selection_or_rejection_reason'),'内容指纹':''})
     for item in receipts:
         input_rows.append({'记录类别':'获准输入对象','输入编号或样本类别':item['input_id'],'对象序号':item['selected_object_index'],'对象或选中范围':item.get('stage2_engineering_object_id') or Path(item['source_path']).name,'来源文件':item['source_path'],'选择器':selector_plain(item['normalized_selector']),'装载数量':item['actual_count'],'当前状态':plain_value(item['load_status']),'能证明':item['can_prove'],'不能证明':item['cannot_prove'],'内容指纹':item['extracted_content_sha256']})
-    technical=[{'顺序':record['stable_display_sequence'],'对象入口':record['navigation_object_id'],'记录类型':record['record_type'],'事实ID':record['fact_id'],'完整记录JSON':canonical(record)} for record in records]
+    technical=technical_chunk_rows(records,technical_cell_limit)
     return {'从这里开始':start_rows,'对象目录':directory,'事件时间线':timeline,'关系与归属':relation_rows,'特殊对象与边界':special,'来源追溯':lineage_rows,'输入范围':input_rows,'技术原文':technical}
 
 def workbook_display_content(payload, workbook_config):
@@ -1419,6 +2345,61 @@ def workbook_display_content(payload, workbook_config):
         sheets.append({'sheet_name':name,'headers':headers,'rows':rows})
     return sheets
 
+def validate_workbook_payload_cell_lengths(payload,workbook_config):
+    limit=int(workbook_config['technical_text_chunking']['safe_cell_limit_utf16_units'])
+    if limit<=0 or limit>EXCEL_DOCUMENTED_CELL_LIMIT_UTF16:
+        raise RuntimeError('EXCEL_TECHNICAL_CHUNK_LIMIT_INVALID')
+    maximum=0
+    for sheet in workbook_display_content(payload,workbook_config):
+        for row in [sheet['headers'],*sheet['rows']]:
+            for value in row:
+                if isinstance(value,str):
+                    units=utf16_units(value); maximum=max(maximum,units)
+                    if units>limit:
+                        raise RuntimeError('WORKBOOK_PAYLOAD_CELL_UTF16_LIMIT_EXCEEDED:'+sheet['sheet_name'])
+    return {'maximum_payload_cell_utf16_units':maximum,'cells_over_safe_limit':0}
+
+def verify_workbook_technical_chunks(workbook_path,records,workbook_config):
+    limit=int(workbook_config['technical_text_chunking']['safe_cell_limit_utf16_units'])
+    maximum=0
+    for sheet_name in workbook_config['sheet_order']:
+        for cell in xlsx_sheet_cells(workbook_path,sheet_name).values():
+            value=cell['value']
+            if isinstance(value,str):
+                units=utf16_units(value); maximum=max(maximum,units)
+                if units>limit:
+                    raise RuntimeError('WORKBOOK_OOXML_CELL_UTF16_LIMIT_EXCEEDED:'+sheet_name)
+    cells=xlsx_sheet_cells(workbook_path,'技术原文')
+    headers=[]
+    for column in range(1,len(workbook_config['preferred_columns']['技术原文'])+1):
+        headers.append(cells.get(f'{col_label(column)}3',{}).get('value',''))
+    if headers!=workbook_config['preferred_columns']['技术原文']:
+        raise RuntimeError('WORKBOOK_TECHNICAL_CHUNK_HEADERS_MISMATCH')
+    row_numbers=[int(re.search(r'\d+',ref).group()) for ref in cells if int(re.search(r'\d+',ref).group())>=4]
+    actual=[]
+    for row_number in range(4,max(row_numbers,default=3)+1):
+        values=[cells.get(f'{col_label(column)}{row_number}',{}).get('value','') for column in range(1,len(headers)+1)]
+        if not any(value!='' for value in values): continue
+        row=dict(zip(headers,values))
+        for field in ('顺序','第几段','一共几段','本段UTF-16长度','完整原文UTF-16长度'):
+            try: row[field]=int(float(str(row[field])))
+            except (TypeError,ValueError): raise RuntimeError('WORKBOOK_TECHNICAL_CHUNK_INTEGER_INVALID:'+field)
+        actual.append(row)
+    summary=validate_technical_chunk_rows(actual,records,limit)
+    expected=technical_chunk_rows(records,limit)
+    if actual!=expected:
+        raise RuntimeError('WORKBOOK_TECHNICAL_CHUNK_OOXML_CONTENT_MISMATCH')
+    return {
+        **summary,
+        'maximum_actual_cell_utf16_units':maximum,
+        'cells_over_safe_limit':0,
+        'technical_chunk_indices_contiguous':True,
+        'technical_chunk_metadata_consistent':True,
+        'technical_reassembled_text_exact':True,
+        'technical_reassembled_utf8_sha256_exact':True,
+        'raw_ooxml_cell_length_scan_passed':True,
+    }
+
 WORKBOOK_RENDERER=r'''
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -1432,6 +2413,8 @@ const workbook=Workbook.create();
 const sheetOrder=cfg.sheet_order;
 const preferredColumns=cfg.preferred_columns;
 const categoryLabels=cfg.category_labels;
+const safeCellUtf16Limit=cfg.technical_text_chunking.safe_cell_limit_utf16_units;
+if (!Number.isInteger(safeCellUtf16Limit) || safeCellUtf16Limit<=0 || safeCellUtf16Limit>32767) throw new Error("技术原文分段阈值无效");
 
 function colLabel(index) {
   let n=index+1,out="";
@@ -1455,7 +2438,7 @@ function displayValue(header,value) {
   return display;
 }
 function widthFor(header) {
-  if (["完整记录JSON"].includes(header)) return 90;
+  if (["完整记录JSON","技术原文分段"].includes(header)) return 90;
   if (["白话说明","发生了什么","不确定或候选说明","关系说明","必须保留的边界","能证明","不能证明","阅读提示"].includes(header)) return 44;
   if (["来源文件","直接来源文件"].includes(header)) return 60;
   if (header==="选择器") return 65;
@@ -1496,6 +2479,9 @@ for (let sheetIndex=0;sheetIndex<sheetOrder.length;sheetIndex+=1) {
   if (rows.length===0) throw new Error(`工作表 ${name} 没有数据`);
   const headers=preferredColumns[name];
   const matrix=rows.map(row=>headers.map(header=>displayValue(header,row[header])));
+  for (const row of matrix) for (const value of row) {
+    if (typeof value==="string" && value.length>safeCellUtf16Limit) throw new Error(`工作表 ${name} 有单元格超过UTF-16安全阈值`);
+  }
   const sheet=workbook.worksheets.add(name);
   sheet.showGridLines=false;
   sheet.tabColor=cfg.tab_colors[sheetIndex];
@@ -1545,12 +2531,20 @@ const actualSheets=imported.worksheets.items.map(sheet=>sheet.name);
 const sheetChecks={};
 const errorTokens=new Set(["#REF!","#DIV/0!","#VALUE!","#NAME?","#N/A","#NUM!","#NULL!","#SPILL!","#CALC!"]);
 let formulaErrorCount=0;
+let maximumActualCellUtf16Units=0;
+let cellsOverSafeLimit=0;
 for (const name of sheetOrder) {
   const sheet=imported.worksheets.getItem(name);
   const {headers,rows}=tableRows(sheet);
   const expectedHeaders=preferredColumns[name];
   const expectedRows=payload[name].map(row=>expectedHeaders.map(header=>displayValue(header,row[header])));
-  formulaErrorCount+=sheet.getUsedRange().values.flat().filter(value=>errorTokens.has(String(value))).length;
+  const usedValues=sheet.getUsedRange().values.flat();
+  formulaErrorCount+=usedValues.filter(value=>errorTokens.has(String(value))).length;
+  for (const value of usedValues) {
+    if (typeof value!=="string") continue;
+    maximumActualCellUtf16Units=Math.max(maximumActualCellUtf16Units,value.length);
+    if (value.length>safeCellUtf16Limit) cellsOverSafeLimit+=1;
+  }
   let firstDifference=null;
   for (let rowIndex=0;rowIndex<Math.min(rows.length,expectedRows.length) && firstDifference===null;rowIndex+=1) {
     for (let columnIndex=0;columnIndex<expectedHeaders.length;columnIndex+=1) {
@@ -1578,10 +2572,12 @@ for (const name of sheetOrder) {
 const result={
   all_pass:JSON.stringify(actualSheets)===JSON.stringify(sheetOrder)
     && Object.values(sheetChecks).every(item=>item.headers_exact && item.row_count_expected===item.row_count_actual && item.all_display_values_exact)
-    && formulaErrorCount===0,
+    && formulaErrorCount===0 && cellsOverSafeLimit===0,
   sheet_order_exact:JSON.stringify(actualSheets)===JSON.stringify(sheetOrder),
   sheet_checks:sheetChecks,
   formula_error_count:formulaErrorCount,
+  maximum_actual_cell_utf16_units:maximumActualCellUtf16Units,
+  cells_over_safe_limit:cellsOverSafeLimit,
 };
 console.log(JSON.stringify(result));
 if (!result.all_pass) process.exit(2);
@@ -1617,10 +2613,13 @@ def build_views(config_path, output_dir=None, preview_dir=None, verification_out
     if ai_output==workbook_output: raise RuntimeError('VIEW_OUTPUT_PATH_COLLISION')
     ai_text=build_ai_view_text(records,fact_path,sample_manifest,view)
     if ai_view_records(ai_text)!=records: raise RuntimeError('AI_VIEW_FACT_RECONCILIATION_FAILED')
-    payload=build_workbook_payload(records,sample_manifest,receipts,config['contract_id'])
+    workbook_config=view['user_workbook']
+    technical_limit=int(workbook_config['technical_text_chunking']['safe_cell_limit_utf16_units'])
+    payload=build_workbook_payload(records,sample_manifest,receipts,config['contract_id'],technical_limit)
     for item in payload['从这里开始']:
         if item['项目']=='事实底座SHA-256':
             item['白话说明']=sha_file(fact_path); item['当前状态']='固定来源身份'
+    payload_length_check=validate_workbook_payload_cell_lengths(payload,workbook_config)
     runtime=view['user_workbook']['runtime']
     node=Path(runtime['node_executable'])
     module=Path(runtime['artifact_tool_module'])
@@ -1659,6 +2658,7 @@ def build_views(config_path, output_dir=None, preview_dir=None, verification_out
         workbook_check=json.loads(stdout_lines[-1])
         if not workbook_check['all_pass']:
             raise RuntimeError('USER_WORKBOOK_RECONCILIATION_FAILED')
+        raw_workbook_check=verify_workbook_technical_chunks(workbook_temp,records,workbook_config)
         os.replace(ai_temp,ai_output)
         os.replace(workbook_temp,workbook_output)
     result={
@@ -1672,6 +2672,9 @@ def build_views(config_path, output_dir=None, preview_dir=None, verification_out
             'path':str(workbook_output),'bytes':workbook_output.stat().st_size,'sha256':sha_file(workbook_output),
             'user_understandability_status':view['user_workbook']['user_understandability']['current_status'],
             'user_understandability_cannot_be_self_passed':True,
+            'artifact_tool_reopen_and_reconciliation_passed':workbook_check['all_pass'],
+            **payload_length_check,
+            **raw_workbook_check,
             **workbook_check,
         },
         'one_command':view['command'],
@@ -1691,6 +2694,19 @@ def receipt_from_file(path,input_id,selected_object_index):
     matches=[item for item in read_jsonl(path) if item['input_id']==input_id and int(item['selected_object_index'])==int(selected_object_index)]
     if len(matches)!=1: raise RuntimeError('TEST_RECEIPT_NOT_UNIQUE:'+input_id)
     return matches[0]
+
+def verify_capabilities(mapping_path,adoption_path,schema_path,receipts_path,output_path=None):
+    mapping=read_jsonl(mapping_path); capabilities=[item for item in mapping if item.get('record_type')=='CAPABILITY_CLOSURE_CANDIDATE']
+    adoption=read_jsonl(adoption_path); schema=json.load(open(schema_path,encoding='utf-8')); receipts=read_jsonl(receipts_path)
+    specification=validate_capability_specs(capabilities,adoption,schema,receipts)
+    execution_receipts,execution=execute_capability_bounded_witnesses(capabilities,receipts)
+    if output_path:
+        output=Path(output_path)
+        if output.exists(): raise RuntimeError('CAPABILITY_RECEIPT_OUTPUT_ALREADY_EXISTS:'+str(output))
+        jsonl_write(output,execution_receipts)
+        execution['written_receipt_file']={'path':str(output),'bytes':output.stat().st_size,'sha256':sha_file(output)}
+    result={'all_pass':True,'specification':specification,'bounded_execution':execution}
+    print(canonical(result)); return result
 
 def validated_recomputation_test_item(base,inp):
     contract=json.load(open((base/inp['contract_file']).resolve(),encoding='utf-8'))
@@ -1757,6 +2773,140 @@ def run_tests(test_path):
                     receipt['mirror_path']=str(tampered)
                     try: validate_capability_specs(capabilities,adoption,schema,receipts); actual=False
                     except RuntimeError: actual=True
+        elif kind=='capability_field_semantics_fixture':
+            actual={field:{
+                'usage':capability_field_semantics(field,False)[0],
+                'transform':capability_field_semantics(field,False)[1],
+                'missing_policy':capability_field_semantics(field,False)[2],
+            } for field in inp['fields']}
+        elif kind=='capability_receipt_schema_union_exact':
+            receipts=read_jsonl((base/inp['receipt_file']).resolve())
+            receipt=next(
+                item for item in receipts
+                if item['input_id']==inp['input_id']
+                and int(item['selected_object_index'])==int(inp['selected_object_index'])
+            )
+            mirror=Path(receipt['mirror_path'])
+            rows=read_jsonl(mirror)
+            actual={
+                'record_count':len(rows),
+                'schema_variant_count':len({tuple(sorted(row)) for row in rows}),
+                'field_count':len(receipt_schema_fields(receipt)),
+                'fields':sorted(receipt_schema_fields(receipt)),
+            }
+        elif kind=='capability_config_expected_receipts_match_summary':
+            mapping=read_jsonl((base/inp['mapping_file']).resolve())
+            adoption=read_jsonl((base/inp['adoption_file']).resolve())
+            schema=json.load(open((base/inp['schema_file']).resolve(),encoding='utf-8'))
+            receipts=read_jsonl((base/inp['receipt_file']).resolve())
+            config=json.load(open((base/inp['config_file']).resolve(),encoding='utf-8'))
+            capabilities=[item for item in mapping if item.get('record_type')=='CAPABILITY_CLOSURE_CANDIDATE']
+            validate_capability_specs(capabilities,adoption,schema,receipts)
+            _,summary=execute_capability_bounded_witnesses(capabilities,receipts)
+            locked=config['capability_field_mapping_join_and_declarative_profile_witness']['expected_receipts']
+            actual=all(key in summary and summary[key]==value for key,value in locked.items())
+        elif kind=='capability_transform_fixture':
+            actual=capability_transform(inp['transform'],inp['value'])
+        elif kind=='capability_transform_rejected':
+            try: capability_transform(inp['transform'],inp['value']); actual=False
+            except RuntimeError as error: actual=str(error).startswith(inp['expected_error_prefix'])
+        elif kind in {
+            'capability_operator_registry_exact','capability_actual_bounded_witnesses','capability_bounded_replay_deterministic',
+            'capability_unsupported_operator_rejected','capability_operator_contract_mutation_rejected',
+            'capability_operator_parameters_mutation_rejected',
+            'capability_unknown_transform_rejected','capability_field_rule_missing_rejected',
+            'capability_row_locator_never_used_as_join','capability_row_alias_locator_rejected',
+            'capability_unjoined_bindings_preserved',
+            'capability_status_gates_exact','capability_witness_hash_mutation_rejected',
+        }:
+            mapping=read_jsonl((base/inp['mapping_file']).resolve()); adoption=read_jsonl((base/inp['adoption_file']).resolve())
+            schema=json.load(open((base/inp['schema_file']).resolve(),encoding='utf-8')); receipts=read_jsonl((base/inp['receipt_file']).resolve())
+            capabilities=[item for item in mapping if item.get('record_type')=='CAPABILITY_CLOSURE_CANDIDATE']
+            if kind=='capability_operator_registry_exact':
+                actual={
+                    'operator_count':len(SUPPORTED_OPERATOR_REGISTRY),
+                    'registry_sha256':operator_registry_sha256(),
+                    'all_declarative_profiles_registered':all(
+                        DECLARATIVE_PROFILE_REGISTRY.get(item['declarative_profile_id'])==item['result_profile']
+                        for item in SUPPORTED_OPERATOR_REGISTRY.values()
+                    ),
+                    'business_operator_semantics_executed':False,
+                }
+            elif kind in {'capability_actual_bounded_witnesses','capability_status_gates_exact'}:
+                validate_capability_specs(capabilities,adoption,schema,receipts); _,summary=execute_capability_bounded_witnesses(capabilities,receipts)
+                actual={key:summary[key] for key in exp}
+            elif kind=='capability_bounded_replay_deterministic':
+                validate_capability_specs(capabilities,adoption,schema,receipts)
+                first,first_summary=execute_capability_bounded_witnesses(capabilities,receipts)
+                second,second_summary=execute_capability_bounded_witnesses(capabilities,receipts)
+                actual=canonical(first)==canonical(second) and first_summary['execution_receipts_sha256']==second_summary['execution_receipts_sha256']
+            elif kind=='capability_unsupported_operator_rejected':
+                target=next(item for item in capabilities if item['object_id']==inp['capability_id']); unsupported=inp['unsupported_operator']
+                target['assembly_spec']['join']['operator']=unsupported; target['assembly_contract']['operator']=unsupported; target['operator_contract']['operator_id']=unsupported
+                for binding in target['source_bindings']: binding['relation']['operator']=unsupported
+                try: validate_capability_specs(capabilities,adoption,schema,receipts); actual=False
+                except RuntimeError as error: actual=str(error).startswith('CAPABILITY_OPERATOR_ID_NOT_REGISTERED:')
+            elif kind=='capability_operator_contract_mutation_rejected':
+                target=next(item for item in capabilities if item['object_id']==inp['capability_id']); target['operator_contract'][inp['contract_field']]=inp['value']
+                try: validate_capability_specs(capabilities,adoption,schema,receipts); actual=False
+                except RuntimeError as error: actual=str(error).startswith('CAPABILITY_OPERATOR_CONTRACT_MISMATCH:')
+            elif kind=='capability_operator_parameters_mutation_rejected':
+                target=next(item for item in capabilities if item['object_id']==inp['capability_id'])
+                target['operator_parameters'][inp['parameter_field']]=inp['value']
+                try: validate_capability_specs(capabilities,adoption,schema,receipts); actual=False
+                except RuntimeError as error: actual=str(error).startswith('CAPABILITY_OPERATOR_PARAMETERS_MISMATCH:')
+            elif kind=='capability_unknown_transform_rejected':
+                target=next(item for item in capabilities if item['object_id']==inp['capability_id'])
+                target['assembly_spec']['source_bindings'][0]['field_rules'][0]['transform']=inp['transform']
+                target['source_bindings'][0]['field_rules'][0]['transform']=inp['transform']
+                try: validate_capability_specs(capabilities,adoption,schema,receipts); actual=False
+                except RuntimeError as error: actual=str(error).startswith('CAPABILITY_TRANSFORM_NOT_IMPLEMENTED:')
+            elif kind=='capability_field_rule_missing_rejected':
+                target=next(item for item in capabilities if item['object_id']==inp['capability_id'])
+                target['assembly_spec']['source_bindings'][0]['field_rules'].pop(); target['source_bindings'][0]['field_rules'].pop()
+                try: validate_capability_specs(capabilities,adoption,schema,receipts); actual=False
+                except RuntimeError as error: actual=str(error).startswith('CAPABILITY_FIELD_RULE_COUNT_MISMATCH:')
+            elif kind=='capability_row_locator_never_used_as_join':
+                validate_capability_specs(capabilities,adoption,schema,receipts); executions,_=execute_capability_bounded_witnesses(capabilities,receipts)
+                actual=all(
+                    match.get('canonical_key','').lower() not in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS
+                    and all(str(alias.get('source_field') or '').lower() not in FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS for alias in match.get('aliases') or [])
+                    for item in executions for match in (item.get('join_witness') or {}).get('matches') or []
+                )
+            elif kind=='capability_row_alias_locator_rejected':
+                forbidden_fields=inp.get('forbidden_source_fields') or [inp['forbidden_source_field']]
+                rejected=[]
+                for forbidden_field in forbidden_fields:
+                    mutated=json.loads(json.dumps(capabilities,ensure_ascii=False))
+                    target=next(item for item in mutated if item['object_id']==inp['capability_id'])
+                    target['assembly_spec']['join']['keys'][0]['verified_source_aliases'][0]['source_field']=forbidden_field
+                    target['assembly_contract']['join_key_families'][0]['verified_source_aliases'][0]['source_field']=forbidden_field
+                    try: validate_capability_specs(mutated,adoption,schema,receipts); rejected.append(False)
+                    except RuntimeError as error: rejected.append(str(error).startswith('CAPABILITY_ROW_LOCATOR_ALIAS_DECLARED_AS_JOIN_KEY:'))
+                actual=all(rejected) and len(rejected)==len(FORBIDDEN_CROSS_SOURCE_LOCATOR_FIELDS)
+            elif kind=='capability_unjoined_bindings_preserved':
+                validate_capability_specs(capabilities,adoption,schema,receipts); executions,_=execute_capability_bounded_witnesses(capabilities,receipts)
+                by_id={item['capability_id']:item for item in executions}
+                relation_unjoined={}; coverage_unjoined={}
+                for capability in capabilities:
+                    if capability['closure_status']!=RUNNABLE_CAPABILITY_STATUS or not capability['assembly_spec']['join']['required']:
+                        continue
+                    capability_id=capability['object_id']; witness=by_id[capability_id]['join_witness']
+                    unjoined=witness.get('unjoined_bindings') or []
+                    if not unjoined: continue
+                    if witness['status']=='COVERAGE_KEY_WITNESS_ONLY_SOURCES_REMAIN_UNJOINED':
+                        coverage_unjoined[capability_id]=unjoined
+                    else:
+                        relation_unjoined[capability_id]=unjoined
+                actual={
+                    'required_relation_unjoined_bindings':relation_unjoined,
+                    'coverage_only_unjoined_bindings':coverage_unjoined,
+                }
+            else:
+                target=next(item for item in capabilities if item['object_id']==inp['capability_id'])
+                target['bounded_execution_contract']['expected_receipt_sha256']='0'*64
+                try: execute_capability_bounded_witnesses(capabilities,receipts); actual=False
+                except RuntimeError as error: actual=str(error).startswith('CAPABILITY_WITNESS_RECEIPT_MISMATCH:'+inp['capability_id'])
         elif kind=='synthetic_target_minute_mark':
             if inp.get('synthetic_only') is not True: raise RuntimeError('REAL_RECOMPUTATION_FORBIDDEN')
             item=validated_recomputation_test_item(base,inp)
@@ -1798,7 +2948,8 @@ def run_tests(test_path):
         elif kind in {
             'fact_base_schema_valid','fact_base_missing_endpoint_rejected','fact_base_empty_target_rejected',
             'fact_base_composite_candidate_promotion_rejected','fact_base_endpoint_evidence_promotion_rejected',
-            'fact_base_copy_funds_boundary_erasure_rejected',
+            'fact_base_copy_funds_boundary_erasure_rejected','fact_base_source_event_mismatch_rejected',
+            'fact_base_source_event_missing_rejected',
         }:
             records=read_jsonl((base/inp['fact_base_file']).resolve()); schema=json.load(open((base/inp['schema_file']).resolve(),encoding='utf-8'))
             if kind=='fact_base_schema_valid':
@@ -1812,11 +2963,51 @@ def run_tests(test_path):
                     target=next(item for item in records if item.get('fact_subtype')=='RELATION_TARGET_OBJECT_REFERENCE' and item.get('target_object_type')=='POSITION_CYCLE_CANDIDATE'); target['target_candidate_ids']=[target['target_candidate_ids'][0]]
                 elif kind=='fact_base_endpoint_evidence_promotion_rejected':
                     target=next(item for item in records if item.get('fact_subtype')=='RELATION_TARGET_OBJECT_REFERENCE' and 'COPY_FUNDS_NODE' not in (item.get('source_relation_types') or [])); target['evidence_status']='DIRECT'
-                else:
+                elif kind=='fact_base_copy_funds_boundary_erasure_rejected':
                     target=next(item for item in records if item.get('fact_subtype')=='RELATION_TARGET_OBJECT_REFERENCE' and 'COPY_FUNDS_NODE' in (item.get('source_relation_types') or []))
                     target['object_class']='ACTIVE_TRADE'; target['promotion_prohibited']=False; target['cannot_prove']=''
+                elif kind=='fact_base_source_event_mismatch_rejected':
+                    target=next(item for item in records if item.get('fact_id')==inp['relation_fact_id'])
+                    target['relation']['source_fact_id']=inp['wrong_source_fact_id']
+                else:
+                    target=next(item for item in records if item.get('fact_id')==inp['relation_fact_id'])
+                    target['relation']['source_event_id']=None
                 try: validate_fact_base_against_schema(records,schema); actual=False
-                except RuntimeError: actual=True
+                except RuntimeError as error:
+                    expected_prefix=inp.get('expected_error_prefix')
+                    actual=(str(error).startswith(expected_prefix) if expected_prefix else True)
+        elif kind in {
+            'utf16_chunk_boundary','technical_chunk_plan_actual','technical_chunk_missing_rejected',
+            'technical_chunk_modified_rejected','technical_chunk_unsafe_limit_rejected',
+        }:
+            if kind=='utf16_chunk_boundary':
+                source='a'*inp['ordinary_prefix_count']+inp['supplementary_character']+inp['ordinary_suffix']
+                chunks=split_utf16_safe(source,inp['safe_cell_limit_utf16_units'])
+                actual={
+                    'chunk_utf16_units':[utf16_units(chunk) for chunk in chunks],
+                    'reassembled_exact':''.join(chunks)==source,
+                }
+            elif kind=='technical_chunk_unsafe_limit_rejected':
+                try: split_utf16_safe('test',inp['unsafe_limit']); actual=False
+                except RuntimeError as error: actual=str(error).startswith(inp['expected_error_prefix'])
+            else:
+                records=read_jsonl((base/inp['fact_base_file']).resolve())
+                rows=technical_chunk_rows(records,inp['safe_cell_limit_utf16_units'])
+                if kind=='technical_chunk_plan_actual':
+                    result=validate_technical_chunk_rows(rows,records,inp['safe_cell_limit_utf16_units'])
+                    actual={key:result[key] for key in exp}
+                elif kind=='technical_chunk_missing_rejected':
+                    target_id=inp['fact_id']; target_rows=[index for index,row in enumerate(rows) if row['事实ID']==target_id]
+                    del rows[target_rows[inp['remove_chunk_number']-1]]
+                    try: validate_technical_chunk_rows(rows,records,inp['safe_cell_limit_utf16_units']); actual=False
+                    except RuntimeError as error: actual=str(error).startswith(inp['expected_error_prefix'])
+                else:
+                    target=next(row for row in rows if row['事实ID']==inp['fact_id'] and row['第几段']==inp['chunk_number'])
+                    original=target['技术原文分段']
+                    target['技术原文分段']=inp['replacement_character']+original[1:]
+                    target['本段UTF-16长度']=utf16_units(target['技术原文分段'])
+                    try: validate_technical_chunk_rows(rows,records,inp['safe_cell_limit_utf16_units']); actual=False
+                    except RuntimeError as error: actual=str(error).startswith(inp['expected_error_prefix'])
         else: raise RuntimeError('UNKNOWN_TEST_KIND:'+kind)
         out.append({'test_id':t['test_id'],'pass':actual==exp,'expected':exp,'actual':actual,'purpose':t.get('purpose')})
     result={'tests':out,'pass_count':sum(x['pass'] for x in out),'fail_count':sum(not x['pass'] for x in out)}
@@ -1828,9 +3019,11 @@ if __name__=='__main__':
     l=sub.add_parser('load-selected-objects'); l.add_argument('--receipts',required=True); l.add_argument('--output-dir',required=True)
     b=sub.add_parser('build-bounded'); b.add_argument('--config',required=True); b.add_argument('--samples',required=True); b.add_argument('--output',required=True)
     v=sub.add_parser('build-views'); v.add_argument('--config',required=True); v.add_argument('--output-dir'); v.add_argument('--preview-dir'); v.add_argument('--verification-output')
+    c=sub.add_parser('verify-capabilities'); c.add_argument('--mapping',required=True); c.add_argument('--adoption',required=True); c.add_argument('--schema',required=True); c.add_argument('--receipts',required=True); c.add_argument('--output')
     t=sub.add_parser('self-test'); t.add_argument('--tests',required=True)
     a=p.parse_args()
     if a.cmd=='load-selected-objects': load_selected_objects(a.receipts,a.output_dir)
     elif a.cmd=='build-bounded': build(a.config,a.samples,a.output)
     elif a.cmd=='build-views': build_views(a.config,a.output_dir,a.preview_dir,a.verification_output)
+    elif a.cmd=='verify-capabilities': verify_capabilities(a.mapping,a.adoption,a.schema,a.receipts,a.output)
     else: run_tests(a.tests)
