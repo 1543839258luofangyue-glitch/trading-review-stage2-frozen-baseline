@@ -1,6 +1,21 @@
 {
   "boundary": "本文件只闭合未来运行办法；本工作包不运行三项真实业务重新计算。",
   "contract_id": "CTR-136-PKG1-PREP-f683d59ec39b",
+  "execution_policy": {
+    "allowed_modes_in_first_package": [
+      "SYNTHETIC_FIXTURE",
+      "LOCKED_INPUT_IDENTITY_DRY_RUN"
+    ],
+    "default_real_business_run_gate": "DENY",
+    "command_line_flag_is_not_user_authorization": true,
+    "existing_output_overwrite_allowed": false,
+    "network_access_allowed": false,
+    "program_file": "06_构建与确定性装载程序候选.py",
+    "real_business_input_value_calculation_allowed": false,
+    "required_program_entry": "recompute-dry-run",
+    "result_identity_rule": "每个输出必须绑定重算编号、程序版本、方法对象指纹、输入指纹、运行模式和输出指纹。",
+    "unauthorized_mode_action": "STOP_WITH_REAL_RECOMPUTATION_NOT_AUTHORIZED"
+  },
   "items": [
     {
       "actual_runtime_inputs": [
@@ -226,10 +241,62 @@
         "precision"
       ],
       "recomputation_id": "S3INPUT-40",
+      "program_entry": {
+        "command_template": "python3 06_构建与确定性装载程序候选.py recompute-dry-run --contract 05_三项重新计算前置合同与依赖候选.json --receipts 02_输入身份_选择器与装载回执候选.jsonl --recomputation-id S3INPUT-40 --mode <SYNTHETIC_FIXTURE|LOCKED_INPUT_IDENTITY_DRY_RUN> --fixture <用户批准的虚构测试输入> --output <新的临时回执文件>",
+        "function": "run_recomputation_dry_run",
+        "implementation_version": "1.0",
+        "real_business_mode_available": false
+      },
+      "runtime_adapter": {
+        "implicit_field_guessing_allowed": false,
+        "input_order": "先验证S3INPUT-40方法对象，再按symbol+UTC_date选唯一锁定Mark源，最后按target_key稳定排序。",
+        "locked_mark_input_count": 11,
+        "method_object_indexes": [
+          1
+        ],
+        "precision_policy": "业务数值用Decimal字符串；分钟区间为[minute_utc,minute_utc+60000ms)；不用收盘价代替高低区间。",
+        "row_number_or_file_order_join_allowed": false,
+        "output_overwrite_allowed": false,
+        "receipt_authority": "02_输入身份_选择器与装载回执候选.jsonl",
+        "required_fixture_fields": [
+          "node_time_utc",
+          "source_available",
+          "quantity",
+          "contract_multiplier",
+          "entry_price",
+          "mark_low",
+          "mark_high",
+          "side"
+        ],
+        "stop_gates": [
+          "METHOD_RECEIPT_IDENTITY_MISMATCH",
+          "LOCKED_MARK_INPUT_IDENTITY_MISMATCH",
+          "TARGET_MINUTE_SOURCE_NOT_UNIQUE",
+          "SOURCE_MINUTE_NOT_AVAILABLE",
+          "REAL_BUSINESS_MODE_REQUESTED"
+        ]
+      },
       "status": "PREPARATION_CANDIDATE_NOT_RUN",
+      "runnability_status": "DRY_RUN_READY_REAL_RUN_NOT_AUTHORIZED",
       "target": "对获准目标动作所在UTC分钟读取1分钟Mark最低价和最高价，形成目标分钟价格区间。"
     },
     {
+      "actual_runtime_inputs": [
+        {
+          "extracted_content_sha256": "5aa05c97b0b31ae4da6e52e16cc7fb71377880b8f5e92be3bfcd65a1a41c8d90",
+          "input_id": "S3INPUT-41",
+          "read_from_verified_mirror_only": true,
+          "role": "CURRENT_EFFECTIVE_RULE_AND_OUTER_ENVELOPE",
+          "selected_object_index": 1
+        },
+        {
+          "extracted_content_sha256": "9e15f6fc03838f9ca9b4cbd83b411a24ae46330de508dfdb5b57ddbbcfebecb0",
+          "input_id": "S3INPUT-41",
+          "read_from_verified_mirror_only": true,
+          "role": "TWO_LAWFUL_VARIANT_ROWS",
+          "selected_object_index": 2
+        }
+      ],
       "check": [
         "两条路径都存在",
         "同一事件不重复",
@@ -285,10 +352,77 @@
         "source_event_ids"
       ],
       "recomputation_id": "S3INPUT-41",
+      "program_entry": {
+        "command_template": "python3 06_构建与确定性装载程序候选.py recompute-dry-run --contract 05_三项重新计算前置合同与依赖候选.json --receipts 02_输入身份_选择器与装载回执候选.jsonl --recomputation-id S3INPUT-41 --mode <SYNTHETIC_FIXTURE|LOCKED_INPUT_IDENTITY_DRY_RUN> --fixture <用户批准的虚构测试输入> --output <新的临时回执文件>",
+        "function": "run_recomputation_dry_run",
+        "implementation_version": "1.0",
+        "real_business_mode_available": false
+      },
+      "runtime_adapter": {
+        "implicit_field_guessing_allowed": false,
+        "input_order": "先验证当前规则对象，再按variant_id对两条合法路径稳定排序；禁止根据文件行顺序选择真实先后。",
+        "method_object_indexes": [
+          1,
+          2
+        ],
+        "precision_policy": "全部区间端点使用Decimal字符串；外包络lower取两路径下界最小值，upper取两路径上界最大值。",
+        "row_number_or_file_order_join_allowed": false,
+        "output_overwrite_allowed": false,
+        "receipt_authority": "02_输入身份_选择器与装载回执候选.jsonl",
+        "required_fixture_fields": [
+          "paths"
+        ],
+        "stop_gates": [
+          "METHOD_RECEIPT_IDENTITY_MISMATCH",
+          "LAWFUL_VARIANT_COUNT_NOT_TWO",
+          "PATH_EVENT_SET_MISMATCH",
+          "DUPLICATE_EVENT_IN_PATH",
+          "UNIQUE_ORDER_CLAIM_REQUESTED",
+          "REAL_BUSINESS_MODE_REQUESTED"
+        ]
+      },
       "status": "PREPARATION_CANDIDATE_NOT_RUN",
+      "runnability_status": "DRY_RUN_READY_REAL_VALUE_RUNTIME_INPUTS_NOT_AUTHORIZED_AND_NOT_CLOSED",
       "target": "同一秒两种都合法但无法证明唯一顺序时，同时保存两条路径及其外包络。"
     },
     {
+      "actual_runtime_inputs": [
+        {
+          "extracted_content_sha256": "729c7a6500d2fcd2fe8412800d5702330f3ae33dafffde16788efb798f7af0cd",
+          "input_id": "S3INPUT-42",
+          "read_from_verified_mirror_only": true,
+          "role": "BUSINESS_CORRECTION_FREEZE",
+          "selected_object_index": 1
+        },
+        {
+          "extracted_content_sha256": "715e38c59ea1bfe736baed43f7e1edb645108833740e34cc55838aec2181632a",
+          "input_id": "S3INPUT-42",
+          "read_from_verified_mirror_only": true,
+          "role": "PRECISION_PROPAGATION_METHOD",
+          "selected_object_index": 2
+        },
+        {
+          "extracted_content_sha256": "25372ccb329e727af7008b18ad1a8581f42d6cb837c80906e502c94fd82a0a9f",
+          "input_id": "S3INPUT-42",
+          "read_from_verified_mirror_only": true,
+          "role": "OPENING_DOMAIN_CONSTRAINT",
+          "selected_object_index": 3
+        },
+        {
+          "extracted_content_sha256": "07cba70f5a737acddf399354ffd784f0b9d6d1fc827b0652d9337f8672ab9ae0",
+          "input_id": "S3INPUT-42",
+          "read_from_verified_mirror_only": true,
+          "role": "CORRECTION_EVIDENCE",
+          "selected_object_index": 4
+        },
+        {
+          "extracted_content_sha256": "40cbb79cffb378d3ea67948adbef0cf12d408dd6b5069a8a4e9b8c47dc2d562c",
+          "input_id": "S3INPUT-42",
+          "read_from_verified_mirror_only": true,
+          "role": "REGRESSION_ONLY_NOT_VALUE_REUSE",
+          "selected_object_index": 5
+        }
+      ],
       "check": [
         "受影响节点唯一列清",
         "权威资金与收益输入身份一致",
@@ -387,7 +521,48 @@
         "run_id"
       ],
       "recomputation_id": "S3INPUT-42",
+      "program_entry": {
+        "command_template": "python3 06_构建与确定性装载程序候选.py recompute-dry-run --contract 05_三项重新计算前置合同与依赖候选.json --receipts 02_输入身份_选择器与装载回执候选.jsonl --recomputation-id S3INPUT-42 --mode <SYNTHETIC_FIXTURE|LOCKED_INPUT_IDENTITY_DRY_RUN> --fixture <用户批准的虚构测试输入> --output <新的临时回执文件>",
+        "function": "run_recomputation_dry_run",
+        "implementation_version": "1.0",
+        "real_business_mode_available": false
+      },
+      "runtime_adapter": {
+        "implicit_field_guessing_allowed": false,
+        "input_order": "先验证五个方法对象身份，再按node_id、action_index和node_side对传播节点稳定排序；第5个对象只作方法回归，不允许复用旧结果值。",
+        "method_object_indexes": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "precision_policy": "使用Decimal字符串，分开包含下界和不包含上界；币种、精度、输入事实ID和运行ID必须随输出保留。",
+        "row_number_or_file_order_join_allowed": false,
+        "output_overwrite_allowed": false,
+        "receipt_authority": "02_输入身份_选择器与装载回执候选.jsonl",
+        "required_fixture_fields": [
+          "affected_node_id",
+          "currency",
+          "precision",
+          "input_fact_ids",
+          "run_id",
+          "method_objects",
+          "opening_interval",
+          "delta_intervals"
+        ],
+        "stop_gates": [
+          "METHOD_RECEIPT_IDENTITY_MISMATCH",
+          "METHOD_OBJECT_COUNT_NOT_FIVE",
+          "AFFECTED_NODE_NOT_UNIQUE",
+          "CURRENCY_OR_PRECISION_MISSING",
+          "UPPER_EXCLUSIVE_BOUNDARY_LOST",
+          "OLD_RESULT_VALUE_REUSE_REQUESTED",
+          "REAL_BUSINESS_MODE_REQUESTED"
+        ]
+      },
       "status": "PREPARATION_CANDIDATE_NOT_RUN",
+      "runnability_status": "DRY_RUN_READY_REAL_VALUE_RUNTIME_INPUTS_NOT_AUTHORIZED_AND_NOT_CLOSED",
       "target": "按获准方法对35.xx期初精度及收益影响形成联合证据区间。"
     }
   ],

@@ -65,12 +65,60 @@
       "relation_type",
       "evidence_status"
     ],
+    "trade_object": [
+      "object_id",
+      "object_class",
+      "trade_id_or_explicit_unassigned_status",
+      "position_cycle_ids",
+      "symbol",
+      "scope_status"
+    ],
+    "process_event": [
+      "event_fact_id",
+      "object_id",
+      "original_time_value",
+      "normalized_time_value",
+      "time_precision",
+      "stable_display_sequence",
+      "parallel_or_multiple_path_status"
+    ],
+    "result_statement": [
+      "result_fact_id",
+      "object_id",
+      "realized_pnl_components",
+      "fee_components",
+      "funding_components",
+      "position_end_state",
+      "currency_and_units"
+    ],
+    "trade_object_package": [
+      "object_identity",
+      "process_package",
+      "result_package",
+      "relation_package",
+      "unknown_package",
+      "conflict_package",
+      "source_package",
+      "minimal_user_semantics_attachment"
+    ],
     "source_identity": [
+      "source_identity_id",
       "source_path",
       "source_bytes",
       "source_sha256",
       "source_locator",
-      "selector"
+      "selector",
+      "selected_input_id",
+      "selected_object_index",
+      "selected_content_sha256"
+    ],
+    "user_semantic_link": [
+      "statement_id",
+      "source_pointer",
+      "exact_text",
+      "scope",
+      "attached_object_ids",
+      "does_not_override_fact"
     ],
     "user_statement": [
       "statement_id",
@@ -79,6 +127,123 @@
       "scope",
       "does_not_override_fact"
     ]
+  },
+  "objective_trade_object_package": {
+    "ai_causal_analysis_allowed": false,
+    "assembly_boundary": "本层只组装可追溯的客观交易对象、过程、结果与证据边界；不生成交易原因、心理标签、策略评价或反事实结论。",
+    "conflict_package": {
+      "required": [
+        "conflict_ids",
+        "claim_fact_ids",
+        "nature",
+        "resolution_status",
+        "resolution_fact_id_or_explicit_unresolved"
+      ],
+      "all_competing_claims_must_be_preserved": true,
+      "last_write_wins_allowed": false,
+      "silent_resolution_allowed": false
+    },
+    "minimal_user_semantics_attachment": {
+      "allowed_content": "只允许用户已明确确认、对建链字段含义或具体对象范围确有必要的最小说明。",
+      "ai_inference_as_user_semantics_allowed": false,
+      "general_habit_auto_application_allowed": false,
+      "objective_fact_override_allowed": false,
+      "required": [
+        "statement_id",
+        "source_pointer",
+        "exact_text",
+        "scope",
+        "attached_object_ids",
+        "does_not_override_fact"
+      ],
+      "unapproved_or_unbound_statement_action": "REJECT_ATTACHMENT_AND_PRESERVE_OBJECTIVE_FACT_UNCHANGED"
+    },
+    "object_identity": {
+      "required": [
+        "object_id",
+        "object_class",
+        "trade_id_or_explicit_unassigned_status",
+        "position_cycle_ids",
+        "symbol",
+        "scope_status"
+      ]
+    },
+    "process_package": {
+      "equal_time_unique_order_inference_allowed": false,
+      "required": [
+        "event_fact_ids",
+        "stable_display_sequence",
+        "original_time_values",
+        "normalized_time_values",
+        "time_precision",
+        "parallel_or_multiple_path_status"
+      ]
+    },
+    "relation_package": {
+      "required": [
+        "relation_ids",
+        "source_fact_id",
+        "target_fact_id",
+        "relation_type",
+        "evidence_status"
+      ],
+      "row_order_or_similar_text_join_allowed": false
+    },
+    "required_sections": [
+      "object_identity",
+      "process_package",
+      "result_package",
+      "relation_package",
+      "unknown_package",
+      "conflict_package",
+      "source_package",
+      "minimal_user_semantics_attachment"
+    ],
+    "result_package": {
+      "required": [
+        "result_fact_ids",
+        "realized_pnl_components",
+        "fee_components",
+        "funding_components",
+        "position_end_state",
+        "currency_and_units"
+      ],
+      "unknown_as_zero_allowed": false
+    },
+    "source_package": {
+      "required": [
+        "source_identity_ids",
+        "source_paths",
+        "source_sha256_values",
+        "source_locators",
+        "selectors",
+        "lineage_fact_ids"
+      ],
+      "every_reference_must_resolve_exactly_once": true,
+      "runtime_metadata_cannot_replace_source_identity": true
+    },
+    "unknown_package": {
+      "required": [
+        "unknown_items",
+        "owner_object_or_fact_id",
+        "field_path",
+        "reason",
+        "missing_evidence",
+        "scope",
+        "source_fact_ids"
+      ],
+      "unknown_as_empty_zero_false_or_not_happened_allowed": false
+    },
+    "reference_integrity": {
+      "all_fact_relation_lineage_conflict_unknown_and_user_semantic_references_resolve_exactly_once": true,
+      "shared_copy_unassigned_or_candidate_object_cannot_be_promoted_to_active_trade": true,
+      "silent_orphan_reference_allowed": false
+    },
+    "causality_policy": {
+      "objective_link_is_not_causal_explanation": true,
+      "user_statement_does_not_establish_objective_causality": true,
+      "ai_interpretation_must_remain_separate_and_not_a_fact": true
+    }
   },
   "interval": {
     "required": [
@@ -105,7 +270,7 @@
   },
   "proof_boundary": "规则固定表示和防错办法，不证明任何候选已正式采用，不证明136笔已经构建。",
   "record_type": "FIRST_PACKAGE_DATA_AND_NORMALIZATION_RULES",
-  "schema_version": "1.0-candidate",
+  "schema_version": "1.1-candidate",
   "serialization": {
     "bom": false,
     "encoding": "UTF-8",

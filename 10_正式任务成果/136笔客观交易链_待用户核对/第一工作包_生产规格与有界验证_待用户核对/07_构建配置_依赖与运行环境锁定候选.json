@@ -1,1 +1,753 @@
-{"allowed_git_outputs":["04_任务与问题/04A_当前任务授权.md","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/00_第一工作包用户白话说明与执行回执_待用户核对.md","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/03_字段关系组装与能力闭合表候选.jsonl","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/06_构建与确定性装载程序候选.py","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/07_构建配置_依赖与运行环境锁定候选.json","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/08_最小程序测试与预期结果候选.jsonl","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/10_有界测试事实底座候选.jsonl","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/11_AI读取测试版候选.md","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对测试版候选.xlsx","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/13_自动质量检查与内容指纹候选.json","10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/14_用户白话检查说明与04B对应回执_待用户核对.md"],"bounded_method_test_sources":[{"allowed_json_pointers":["/current_effective_rule","/unique_order_proven","/lawful_order_variant_count","/t087_outer_envelope","/lawful_variants_identity"],"can_prove":"冻结方法声明唯一顺序未证明，并规定外包络。","cannot_prove":"不证明哪条路径是真实历史顺序，也不表示已执行新的真实重算。","expected_selector_kind":"JSON_SELECTED_POINTERS","input_id":"S3INPUT-41","object_id":"T087","role":"T087_CURRENT_EFFECTIVE_METHOD_AND_OUTER_ENVELOPE","sample_categories":["3_t087_two_lawful_paths_and_outer_envelope","8_conflict_interval_multiple_candidates_or_unknown"],"selected_object_index":1},{"can_prove":"两行分别保存两条合法路径及其既有方法值。","cannot_prove":"旧值只供有界表示测试和方法回归，不作为本次新运行真值。","expected_selector_kind":"CSV_FULL_TWO_VARIANTS","input_id":"S3INPUT-41","object_id":"T087","role":"T087_TWO_LAWFUL_VARIANTS","sample_categories":["3_t087_two_lawful_paths_and_outer_envelope","8_conflict_interval_multiple_candidates_or_unknown"],"selected_object_index":2}],"bounded_sample_sources":{"condition":{"bytes":588201,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_CONDITIONAL_ORDER_LIFECYCLE_EVENT.csv","selected_object_index":4,"sha256":"3718b0e443a86a58b7530ad26c5831dcc6b546c6d59110bf4a46fae1e8611068"},"copy":{"bytes":12960,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_COPY_FUNDS_ONLY_EVENT.csv","selected_object_index":6,"sha256":"37ed5ee0f7c34e34ee39bd33ef5c3430013e2e6ea6287f5e2574895f1c8c21a7"},"fill":{"bytes":6446600,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_FILL_EVENT.csv","selected_object_index":2,"sha256":"65dfb2874cb3490a5d9e12fce5565c6727c7cd1bc27ee13dd77045df6806fb71"},"fund":{"bytes":12630677,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_FUND_EVENT.csv","selected_object_index":5,"sha256":"69b9ce61a9659a47199d0b317905ea39445ed5ab0f1f0442b5f758e3763fa4aa"},"lineage":{"bytes":13305132,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINEAGE.csv","selected_object_index":8,"sha256":"dc741959d50d1ba57d54d0e372bc2f347682c64a52d5dda4d264a54e51fa1035"},"linkage":{"bytes":2805280,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINKAGE_MATRIX.csv","selected_object_index":7,"sha256":"e6cb7292ce1bff188722c741a0a2e0a2ad685e0317e270eaee612c115c4e6401"},"order":{"bytes":714696,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_ORDER_EVENT.csv","selected_object_index":1,"sha256":"07787358c6dbb7b2630cf5ff2ae6a0f49fd9e4c7305cb2a362d4e266cc8ac510"},"position":{"bytes":507818,"input_id":"S3INPUT-35","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_POSITION_ACTION_EVENT.csv","selected_object_index":3,"sha256":"2a0e7340593e7bf1db7ae54b52a31506160d9802eb35b4fd8dcfc476a3fecd77"}},"branch":"review/136-chain-production-prep-validation-restart-20260911","capability_field_mapping_join_and_declarative_profile_witness":{"claim_limit":"FIELD_MAPPING_JOIN_AND_DECLARATIVE_PROFILE_WITNESS_ONLY; BUSINESS_OPERATOR_SEMANTICS_NOT_EXECUTED; NOT_FORMAL_ADOPTION; NOT_FULL_136_BUILD; NOT_BUSINESS_RECOMPUTATION","command":"python3 06_构建与确定性装载程序候选.py verify-capabilities --mapping 03_字段关系组装与能力闭合表候选.jsonl --adoption 01_四十四项采用清单候选.jsonl --schema 04_数据结构与规范化规则候选.json --receipts 02_输入身份_选择器与装载回执候选.jsonl --output <新的空白临时回执文件>","coverage_only_independent_bindings":{"C26-CAP-01":[["S3INPUT-04",1],["S3INPUT-22",1]]},"expected_receipts":{"all_business_operator_semantics_not_executed":true,"candidate_witness_output_count":148,"declarative_profile_witness_count":94,"execution_receipts_sha256":"391b6e68474e57f6b028d7e4818cc298a839130baa6ff74f176dc09c04562a48","execution_status_counts":{"BOUNDARY_NO_OBJECTIVE_FACT_EMITTED":5,"BOUNDED_REAL_MIRROR_FIELD_AND_JOIN_WITNESS_PASSED":69,"PENDING_USER_ACCEPTANCE_NO_PRODUCTION_OUTPUT":1,"UNRESOLVED_NO_CONFIRMED_FACT_EMITTED":19},"explicit_unknown_field_count":242,"formal_fact_output_count":0,"operator_count":33,"receipt_count":94,"runnable_declarative_profile_witness_count":69,"status_gate_declarative_profile_witness_count":25},"field_rule_requirements":["每个获准字段恰好一条用途规则，并与锁定镜像字段范围一致","每个字段明确原值输出位置和规范值输出位置","数量、时间、日期集合、序号、标识、来源、分类与JSON结构分开处理，反例测试锁定已知易混字段","JSON文字真实解析并保留原值；无效JSON拒绝；非JSON列表原样保留","时间值保留原值与表示身份；只识别原值自身明确写出的Z、UTC、UTC加偏移或数字偏移，在时区或Excel日期系统未声明时不自行猜测","连接见证字段缺失时拒绝该见证，其他缺失原样保留未知","每个字段结果必须与来源原值及声明转换逐项核对","业务算子完整业务语义未获授权且未运行，不得用声明性见证代替。"],"join_policy":{"allowed":"EXACT_VALUE_ON_DECLARED_KEY_ALIASES_ONLY","forbidden_cross_source_locator_keys":["_source_row","line_no","manual_source_row","row_no","row_number","source_row","source_row_number","来源行","来源行号"],"multiple_matches":"PRESERVE_MATCH_COUNTS_AND_PAIRWISE_WITNESSES_NO_UNIQUE_CLAIM","symbol_match_scope":"COVERAGE_ONLY_NOT_EVENT_IDENTITY","unjoined_bindings":"PRESERVE_AS_INDEPENDENT_CONTEXT_OR_PROJECTION_SOURCE"},"known_independent_bindings":{"C02-CAP-01":[["S3INPUT-19",1]],"C19-CAP-02":[["S3INPUT-01",1]],"C21-CAP-01":[["S3INPUT-09",1]],"C21-CAP-02":[["S3INPUT-01",1]],"C28-CAP-01":[["S3INPUT-11",1]]},"mirror_policy":{"authority":"02_输入身份_选择器与装载回执候选.jsonl","parent_source_path_read":false,"read":"MIRROR_PATH_ONLY","required_mirror_sha256_check":true,"runnable_selected_object_count":31},"operator_registry":{"all_declarative_profiles_registered":true,"business_operator_semantics_executed":false,"declarative_profile_count":10,"declarative_profiles":["DECLARATIVE_CLASSIFICATION_V1","DECLARATIVE_COVERAGE_V1","DECLARATIVE_IDENTITY_V1","DECLARATIVE_INTEGRITY_V1","DECLARATIVE_LIFECYCLE_V1","DECLARATIVE_LINEAGE_V1","DECLARATIVE_MEASURE_V1","DECLARATIVE_RELATION_V1","DECLARATIVE_TIMELINE_V1","NO_FACT_BOUNDARY_V1"],"operator_count":33,"operators":["ACTIVE_AND_COPY_SCOPE_PARTITION","ADJACENT_REVERSE_POSITION_OBJECTIVE_LINKAGE","ANALYSIS_STRATEGY_AND_COUNTERFACTUAL_BOUNDARY","CANONICAL_CASH_EVENT_DEDUPLICATION_AND_TRANSFER_PAIRING","CONDITION_TO_ORDER_FILL_AND_CYCLE_RELATION_GRAPH","FACT_USER_STATEMENT_INTERPRETATION_AND_STATUS_LAYERING","FEE_AND_NET_RESULT_COMPONENT_SEPARATION","FILL_PRICE_AND_WEIGHTED_AVERAGE_TRANSITION","FILL_TO_ORDER_AND_CYCLE_LINKAGE","FUTURE_SCHEMA_AND_FORMAT_BOUNDARY","IDENTIFIER_MAPPING_WITHOUT_ID_REPLACEMENT","IDENTITY_RESOLUTION_WITH_SOURCE_BOUNDARIES","MARGIN_AND_RISK_FIELDS_SEPARATED_NO_INFERENCE_FOR_MISSING_VALUES","MARKET_DATA_IDENTITY_WINDOW_AND_COVERAGE","MFE_MAE_BY_CYCLE_OR_POSITION_STAGE","NON_OBJECTIVE_USER_REASON_BOUNDARY","OBJECTIVE_ACTION_CLASSIFICATION_WITH_EVIDENCE","ORDER_AND_CONDITION_LIFECYCLE_LINKAGE","POSITION_QUANTITY_STATE_TRANSITION","POSITION_ZERO_TO_NONZERO_TO_ZERO_CYCLE_GROUPING","REALIZED_PNL_BY_FILL_AND_CYCLE","REFERENTIAL_AND_QUANTITY_INTEGRITY_CHECKS","SCREENSHOT_CONDITION_AND_CYCLE_LINEAGE_BRIDGE","SIDE_POSITION_SIDE_AND_POSITION_EFFECT_SEPARATION","STABLE_ID_AND_SOURCE_NAMESPACE_PRESERVATION","STOP_LOSS_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION","TAKE_PROFIT_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION","TIMELINE_UNION_PRESERVE_EQUAL_TIME_PARALLEL_EVENTS","TIME_BOUNDED_EQUITY_ANCHORS_AND_UNKNOWN_GAPS","TIME_NORMALIZATION_WITH_ORIGINAL_VALUE_AND_PRECISION","USER_INTERFACE_PRODUCT_BOUNDARY","USER_STAGE_AGGREGATION_ACROSS_POSITION_PRICE_AND_MFE_MAE_COMPONENTS","VERSION_CORRECTION_AND_SOURCE_IDENTITY_LINEAGE"],"registry_sha256":"0dd487ab5a9f4c034273ba4e5cd7f0cc3973f96214f7abf1f386843ab800e3cd","version":"1.0"},"receipt_persistence":"THIS_STEP_VALIDATES_IN_MEMORY_OR_A_CALLER_NAMED_TEMPORARY_FILE; DO_NOT_APPEND_TO_10_11_12_IN_THIS_TARGETED_FIX","schema_scope_summary":{"jsonl_schema_policy":"UNION_ALL_NONEMPTY_OBJECT_ROWS_NOT_FIRST_ROW_ONLY","s3input_06_field_count":30,"s3input_06_record_count":639,"s3input_06_schema_variant_count":2,"source_fields_checked":4773,"unique_source_fields_checked":678},"status":"LOCKED_MIRROR_FIELD_MAPPING_JOIN_AND_DECLARATIVE_PROFILE_WITNESS_COMPLETED"},"clean_root":"/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911","clean_root_regions":["/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/01_只读输入镜像区","/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/02_规则程序与配置区","/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/03_本次临时运行区","/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/04_待检查输出区"],"contract_id":"CTR-136-PKG1-PREP-f683d59ec39b","contract_sha256":"f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca","forbidden_actions":["READ_EXTRA_SUMMARY","FULL_136_BUILD","REAL_RECOMPUTATION","FORMAL_ADOPTION","MODIFY_FROZEN_INPUT","MODIFY_04B","MERGE_MAIN"],"forbidden_extra_sample_summary":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_UNIFIED_EVENT_EVIDENCE.csv","formal_base_commit":"e57aa7eefac1bf0b8fe015345c7f0b42a8892597","normalization":{"encoding":"UTF-8","float_for_business_decimal":false,"json_sort_keys":true,"line_endings":"LF"},"python":{"implementation":"CPython","standard_library_only_for_candidate_program":true,"version":"3.14.3"},"record_type":"FIRST_PACKAGE_BUILD_CONFIGURATION","selected_object_loader":{"command":"python3 06_构建与确定性装载程序候选.py load-selected-objects --receipts 02_输入身份_选择器与装载回执候选.jsonl --output-dir <空白的只读输入镜像区>","deterministic_checks":["父文件字节数和SHA-256必须与回执一致","选择器实际数量必须与回执一致","抽取后内容SHA-256必须与回执一致","输出目录必须为空，程序不删除或覆盖既有文件","装载完成后所有镜像文件设为只读"],"receipt_file":"02_输入身份_选择器与装载回执候选.jsonl"},"selected_object_reference_count":74,"specification_inputs":{"adoption_candidates":{"bytes":159709,"path":"01_四十四项采用清单候选.jsonl","sha256":"5d0d2e936af5c4c3d346f65e75dda69b7b4465478e9d3453ba6cf3a3b12ef7c3"},"assembly_mapping":{"bytes":6311633,"path":"03_字段关系组装与能力闭合表候选.jsonl","sha256":"7ed659f32588053b51721e93e1c02e5eabad8217f40839a2c590d663ff312b1b"},"candidate_program":{"bytes":212109,"path":"06_构建与确定性装载程序候选.py","sha256":"96a1ddc307c2f86ff97e9316e95fa6623e13007fa9cf1c3ac22d7d79f06204a5"},"input_receipts":{"bytes":177415,"path":"02_输入身份_选择器与装载回执候选.jsonl","sha256":"a8a3e21a19fe5a72733b94b0837d50a8f1ed699fc95205adf626bbc26a77022f"},"normalization_schema":{"bytes":4293,"path":"04_数据结构与规范化规则候选.json","sha256":"a5e0db15ca05cff313e0672ff44e4d6088a1e8ee65fb0946ac0f15c0e417d949"},"program_tests":{"bytes":62009,"path":"08_最小程序测试与预期结果候选.jsonl","sha256":"6a25eac11c4c55dafa4d381d2f7b8b7ab54458e23cd526c186ab8323fc612ad6"},"recomputation_contract":{"bytes":24636,"path":"05_三项重新计算前置合同与依赖候选.json","sha256":"ac2f8b680d708198101fdd2d0f0c0b12421e75369624041d729c0a01b0c41c4d"},"stage3_machine_ledger":{"bytes":1904700,"path":"../../客观交易链正式构成与构建输入联合裁定_待用户核对/阶段三_PRE与POST_客观交易链正式构成与构建输入最终交叉裁定_待用户核对/阶段三_机器总账.jsonl","sha256":"d41694adfe54a0ba1a29d8ab66d991b31bc98635ccb295965eda8e5d5a4dcafa"}},"unique_source_path_count":72,"view_generation":{"ai_view":{"body_note":"按对象连续呈现；目录只保存引用，完整机器记录只在所属对象正文出现一次。每个对象均保留事实、关系、来源链、边界和事实ID。","boundary":"边界：只覆盖样本清单选中的有界对象；不代表136笔已经构建，不代表任何候选已正式采用。","closing_boundaries":["所有记录均可凭`fact_id`回到事实底座。","候选、UNKNOWN、区间、方法和来源链没有被升级为确定交易所事实。","稳定展示顺序只用于连续读取，不代表真实因果先后。","对象目录、逐对象正文和完整性清单必须相互对账，记录不能遗漏或重复。"],"complete_record_once":true,"directory_reference_only":true,"identity":"身份：由`10_有界测试事实底座候选.jsonl`自动生成的测试表示，不是第二套事实。","navigation_order":["机器清单","对象目录","逐个主动交易对象","共享账户影响","无法可靠归属对象","跟单资金对象","跨对象关系","T087方法与边界","来源追溯","完整性核对"],"raw_json_policy":"人工智能版保留每条完整机器记录；目录不复制正文，不用固定250条机械分块代替对象导航。","title":"# 第一工作包｜人工智能连续读取测试版（待用户核对）"},"command":"python3 06_构建与确定性装载程序候选.py build-views --config 07_构建配置_依赖与运行环境锁定候选.json","inputs":{"fact_base":{"bytes":19279441,"file":"10_有界测试事实底座候选.jsonl","sha256":"2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9"},"input_receipts":{"bytes":177415,"file":"02_输入身份_选择器与装载回执候选.jsonl","sha256":"a8a3e21a19fe5a72733b94b0837d50a8f1ed699fc95205adf626bbc26a77022f"},"sample_manifest":{"bytes":413811,"file":"09_有界验证样本清单候选.json","sha256":"9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"}},"outputs":{"ai_view":"11_AI读取测试版候选.md","user_workbook":"12_用户核对测试版候选.xlsx"},"user_workbook":{"category_labels":{"1_multiple_open_or_add_attempts_cancel_and_replacement":"1．多次开仓或加仓尝试、撤单和替换","2_stop_takeprofit_evolution_and_candidate_relation":"2．止损止盈演变与候选关系","3_t087_two_lawful_paths_and_outer_envelope":"3．T087同秒两条合法路径及外包络","4_external_fund_or_shared_account_impact":"4．外部资金或共享账户影响","5_adjacent_trades_and_unassigned_condition":"5．相邻交易与无法可靠归属的条件对象","6_copy_trading_effect_object":"6．跟单影响对象","7_partial_fill_reduce_close_and_continuity":"7．部分成交、减仓、平仓与仓位连续性","8_conflict_interval_multiple_candidates_or_unknown":"8．冲突、区间、多个候选或未知","9_long_object_chunk_continuity_and_two_views":"9．长对象、分块连续读取与两个同源视图"},"font_family":"Microsoft YaHei","preferred_columns":{"事件时间线":["顺序","对象入口","北京时间","原始时间","品种","发生了什么","委托ID","成交ID","动作","状态","数量","价格","手续费","费用币种","已实现盈亏","仓位变化","证据状态","不确定或候选说明","事实ID"],"从这里开始":["项目","白话说明","当前状态"],"关系与归属":["对象入口","关系说明","关系类型","来源事件","目标事件","目标对象类型","目标对象ID","来源事实ID","目标事实ID","证据状态","能证明","不能证明","关系ID","事实ID"],"对象目录":["对象入口","对象类型","记录数","事实数","关系数","来源链数","方法记录数","起始时间","结束时间","涉及样本","阅读提示"],"技术原文":["顺序","对象入口","记录类型","事实ID","第几段","一共几段","本段UTF-16长度","完整原文UTF-16长度","完整原文SHA-256","技术原文分段"],"来源追溯":["对象入口","事件ID","直接来源文件","来源表","来源行","变换规则","值保留状态","事实ID"],"特殊对象与边界":["对象入口","对象身份","记录数","白话说明","必须保留的边界","相关事实ID"],"输入范围":["记录类别","输入编号或样本类别","对象序号","对象或选中范围","来源文件","选择器","装载数量","当前状态","能证明","不能证明","内容指纹"]},"raw_json_policy":"普通核对页不放大段JSON；最后一张‘技术原文’保存3,902条机器记录的无损分段，按事实ID和分段序号重新连接后才是完整原文。分段不改变事实底座，不生成第二套事实。","runtime":{"artifact_tool_module":"/Users/luodaluo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs","artifact_tool_module_bytes":11489310,"artifact_tool_module_sha256":"d23c29992898aaf6efc0f78611ee34ba213579fa25e05ad4dc5dbcb356c11a89","artifact_tool_package_version":"2.8.59","node_executable":"/Users/luodaluo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node","node_version":"v24.19.0"},"sheet_order":["从这里开始","对象目录","事件时间线","关系与归属","特殊对象与边界","来源追溯","输入范围","技术原文"],"subtitles":{"事件时间线":"用普通中文连续展示每个对象发生了什么；原值、时间、未知和候选边界继续保留。","从这里开始":"先说明这是什么、怎么看、哪些还没有由用户确认；不把技术检查冒充用户理解通过。","关系与归属":"只呈现固定证据中的关系，不把候选、上下文或跨对象关系升级为确定因果。","对象目录":"按交易或特殊对象汇总记录数量，并指向后续核对页面。","技术原文":"完整机器记录按事实ID分段保存，每个单元格最多30,000个UTF-16代码单元；必须按“第几段”直接连接后才还原完整JSON。分段不删除、不替换任何内容，本页不是普通用户必须逐段阅读的页面。","来源追溯":"让每条事实能回到来源文件、位置、指纹和选择规则。","特殊对象与边界":"集中说明共享账户、无法归属、跟单、T087同秒多路径及其他不能硬塞进单笔交易的内容。","输入范围":"列出固定输入、选中对象、装载数量和不能证明的内容。"},"tab_colors":["#1D4ED8","#0F766E","#2563EB","#7C3AED","#B45309","#BE123C","#475569","#64748B"],"technical_text_chunking":{"automatic_chunking_scope":"TECHNICAL_RAW_SHEET_ONLY","chunk_column":"技术原文分段","chunks_individually_valid_json_required":false,"complete_text_fingerprint":"UTF-8_SHA256","documented_excel_cell_limit_utf16_units":32767,"enabled":true,"grouping_key":"事实ID","length_unit":"UTF-16_CODE_UNITS","other_sheet_over_limit_behavior":"STOP","reassembly_check":"EXACT_TEXT_EQUALITY","safe_cell_limit_utf16_units":30000,"sort_keys":["顺序","第几段"],"split_method":"UNICODE_CODE_POINT_BOUNDARY","truncation_forbidden":true,"unicode_normalization_forbidden":true,"worksheet":"技术原文"},"user_understandability":{"current_status":"WAITING_FOR_ACTUAL_USER_REVIEW","pass_condition":"只有用户实际打开并确认能够理解，才能记为通过。","work_or_ai_self_check_limit":"程序、当前Work和其他AI只能检查内容完整、同源和排版，不能代替用户宣布可理解。"}},"verification":{"expected_cells_over_safe_limit":0,"expected_reassembled_record_count":3902,"input_receipt_count":74,"maximum_allowed_cell_utf16_units":30000,"record_count":3902,"record_type_counts":{"FACT_STATEMENT":1306,"LINEAGE_STATEMENT":1336,"METHOD_EVIDENCE":2,"RELATION_STATEMENT":1258},"sample_category_count":9,"technical_chunk_row_count":3905,"technical_extra_chunk_row_count":3,"technical_multi_chunk_record_count":2,"technical_multi_chunk_total_rows":5,"technical_single_chunk_record_count":3900,"technical_source_record_count":3902}},"worktree":"/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行隔离工作区_20260911"}
+{
+  "allowed_git_outputs": [
+    "04_任务与问题/04A_当前任务授权.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/00_第一工作包用户白话说明与执行回执_待用户核对.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/03_字段关系组装与能力闭合表候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/06_构建与确定性装载程序候选.py",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/07_构建配置_依赖与运行环境锁定候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/08_最小程序测试与预期结果候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/10_有界测试事实底座候选.jsonl",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/11_AI读取测试版候选.md",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选.html",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/13_自动质量检查与内容指纹候选.json",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/14_用户白话检查说明与04B对应回执_待用户核对.md"
+  ],
+  "bounded_method_test_sources": [
+    {
+      "allowed_json_pointers": [
+        "/current_effective_rule",
+        "/unique_order_proven",
+        "/lawful_order_variant_count",
+        "/t087_outer_envelope",
+        "/lawful_variants_identity"
+      ],
+      "can_prove": "冻结方法声明唯一顺序未证明，并规定外包络。",
+      "cannot_prove": "不证明哪条路径是真实历史顺序，也不表示已执行新的真实重算。",
+      "expected_selector_kind": "JSON_SELECTED_POINTERS",
+      "input_id": "S3INPUT-41",
+      "object_id": "T087",
+      "role": "T087_CURRENT_EFFECTIVE_METHOD_AND_OUTER_ENVELOPE",
+      "sample_categories": [
+        "3_t087_two_lawful_paths_and_outer_envelope",
+        "8_conflict_interval_multiple_candidates_or_unknown"
+      ],
+      "selected_object_index": 1
+    },
+    {
+      "can_prove": "两行分别保存两条合法路径及其既有方法值。",
+      "cannot_prove": "旧值只供有界表示测试和方法回归，不作为本次新运行真值。",
+      "expected_selector_kind": "CSV_FULL_TWO_VARIANTS",
+      "input_id": "S3INPUT-41",
+      "object_id": "T087",
+      "role": "T087_TWO_LAWFUL_VARIANTS",
+      "sample_categories": [
+        "3_t087_two_lawful_paths_and_outer_envelope",
+        "8_conflict_interval_multiple_candidates_or_unknown"
+      ],
+      "selected_object_index": 2
+    }
+  ],
+  "bounded_sample_sources": {
+    "condition": {
+      "bytes": 588201,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_CONDITIONAL_ORDER_LIFECYCLE_EVENT.csv",
+      "selected_object_index": 4,
+      "sha256": "3718b0e443a86a58b7530ad26c5831dcc6b546c6d59110bf4a46fae1e8611068"
+    },
+    "copy": {
+      "bytes": 12960,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_COPY_FUNDS_ONLY_EVENT.csv",
+      "selected_object_index": 6,
+      "sha256": "37ed5ee0f7c34e34ee39bd33ef5c3430013e2e6ea6287f5e2574895f1c8c21a7"
+    },
+    "fill": {
+      "bytes": 6446600,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_FILL_EVENT.csv",
+      "selected_object_index": 2,
+      "sha256": "65dfb2874cb3490a5d9e12fce5565c6727c7cd1bc27ee13dd77045df6806fb71"
+    },
+    "fund": {
+      "bytes": 12630677,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_FUND_EVENT.csv",
+      "selected_object_index": 5,
+      "sha256": "69b9ce61a9659a47199d0b317905ea39445ed5ab0f1f0442b5f758e3763fa4aa"
+    },
+    "lineage": {
+      "bytes": 13305132,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINEAGE.csv",
+      "selected_object_index": 8,
+      "sha256": "dc741959d50d1ba57d54d0e372bc2f347682c64a52d5dda4d264a54e51fa1035"
+    },
+    "linkage": {
+      "bytes": 2805280,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINKAGE_MATRIX.csv",
+      "selected_object_index": 7,
+      "sha256": "e6cb7292ce1bff188722c741a0a2e0a2ad685e0317e270eaee612c115c4e6401"
+    },
+    "order": {
+      "bytes": 714696,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_ORDER_EVENT.csv",
+      "selected_object_index": 1,
+      "sha256": "07787358c6dbb7b2630cf5ff2ae6a0f49fd9e4c7305cb2a362d4e266cc8ac510"
+    },
+    "position": {
+      "bytes": 507818,
+      "input_id": "S3INPUT-35",
+      "path": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_POSITION_ACTION_EVENT.csv",
+      "selected_object_index": 3,
+      "sha256": "2a0e7340593e7bf1db7ae54b52a31506160d9802eb35b4fd8dcfc476a3fecd77"
+    }
+  },
+  "branch": "review/136-chain-production-prep-validation-restart-20260911",
+  "capability_field_mapping_join_and_declarative_profile_witness": {
+    "layer_identity": "DECLARATIVE_WITNESS_LAYER_V1",
+    "claim_limit": "THIS_DECLARATIVE_LAYER_ONLY; BUSINESS_OPERATOR_SEMANTICS_NOT_EXECUTED_IN_THIS_LAYER; NOT_FORMAL_ADOPTION; NOT_FULL_136_BUILD; NOT_BUSINESS_RECOMPUTATION",
+    "command": "python3 06_构建与确定性装载程序候选.py verify-capabilities --mapping 03_字段关系组装与能力闭合表候选.jsonl --adoption 01_四十四项采用清单候选.jsonl --schema 04_数据结构与规范化规则候选.json --receipts 02_输入身份_选择器与装载回执候选.jsonl --output <新的空白临时声明性回执文件> --business-output <新的空白临时有界业务结果文件>",
+    "coverage_only_independent_bindings": {
+      "C26-CAP-01": [
+        [
+          "S3INPUT-04",
+          1
+        ],
+        [
+          "S3INPUT-22",
+          1
+        ]
+      ]
+    },
+    "expected_receipts": {
+      "all_business_operator_semantics_not_executed": true,
+      "candidate_witness_output_count": 148,
+      "declarative_profile_witness_count": 94,
+      "execution_receipts_sha256": "391b6e68474e57f6b028d7e4818cc298a839130baa6ff74f176dc09c04562a48",
+      "execution_status_counts": {
+        "BOUNDARY_NO_OBJECTIVE_FACT_EMITTED": 5,
+        "BOUNDED_REAL_MIRROR_FIELD_AND_JOIN_WITNESS_PASSED": 69,
+        "PENDING_USER_ACCEPTANCE_NO_PRODUCTION_OUTPUT": 1,
+        "UNRESOLVED_NO_CONFIRMED_FACT_EMITTED": 19
+      },
+      "explicit_unknown_field_count": 242,
+      "formal_fact_output_count": 0,
+      "operator_count": 33,
+      "receipt_count": 94,
+      "runnable_declarative_profile_witness_count": 69,
+      "status_gate_declarative_profile_witness_count": 25
+    },
+    "field_rule_requirements": [
+      "每个获准字段恰好一条用途规则，并与锁定镜像字段范围一致",
+      "每个字段明确原值输出位置和规范值输出位置",
+      "数量、时间、日期集合、序号、标识、来源、分类与JSON结构分开处理，反例测试锁定已知易混字段",
+      "JSON文字真实解析并保留原值；无效JSON拒绝；非JSON列表原样保留",
+      "时间值保留原值与表示身份；只识别原值自身明确写出的Z、UTC、UTC加偏移或数字偏移，在时区或Excel日期系统未声明时不自行猜测",
+      "连接见证字段缺失时拒绝该见证，其他缺失原样保留未知",
+      "每个字段结果必须与来源原值及声明转换逐项核对",
+      "本声明性见证层不调用业务语义程序，不得用它代替后续第二层有界业务执行；第二层是否执行及执行到什么范围，必须按独立配置和测试判断。"
+    ],
+    "join_policy": {
+      "allowed": "EXACT_VALUE_ON_DECLARED_KEY_ALIASES_ONLY",
+      "forbidden_cross_source_locator_keys": [
+        "_source_row",
+        "line_no",
+        "manual_source_row",
+        "row_no",
+        "row_number",
+        "source_row",
+        "source_row_number",
+        "来源行",
+        "来源行号"
+      ],
+      "multiple_matches": "PRESERVE_MATCH_COUNTS_AND_PAIRWISE_WITNESSES_NO_UNIQUE_CLAIM",
+      "symbol_match_scope": "COVERAGE_ONLY_NOT_EVENT_IDENTITY",
+      "unjoined_bindings": "PRESERVE_AS_INDEPENDENT_CONTEXT_OR_PROJECTION_SOURCE"
+    },
+    "known_independent_bindings": {
+      "C02-CAP-01": [
+        [
+          "S3INPUT-19",
+          1
+        ]
+      ],
+      "C19-CAP-02": [
+        [
+          "S3INPUT-01",
+          1
+        ]
+      ],
+      "C21-CAP-01": [
+        [
+          "S3INPUT-09",
+          1
+        ]
+      ],
+      "C21-CAP-02": [
+        [
+          "S3INPUT-01",
+          1
+        ]
+      ],
+      "C28-CAP-01": [
+        [
+          "S3INPUT-11",
+          1
+        ]
+      ]
+    },
+    "mirror_policy": {
+      "authority": "02_输入身份_选择器与装载回执候选.jsonl",
+      "parent_source_path_read": false,
+      "read": "MIRROR_PATH_ONLY",
+      "required_mirror_sha256_check": true,
+      "runnable_selected_object_count": 31
+    },
+    "operator_registry": {
+      "all_declarative_profiles_registered": true,
+      "business_operator_semantics_executed": false,
+      "declarative_profile_count": 10,
+      "declarative_profiles": [
+        "DECLARATIVE_CLASSIFICATION_V1",
+        "DECLARATIVE_COVERAGE_V1",
+        "DECLARATIVE_IDENTITY_V1",
+        "DECLARATIVE_INTEGRITY_V1",
+        "DECLARATIVE_LIFECYCLE_V1",
+        "DECLARATIVE_LINEAGE_V1",
+        "DECLARATIVE_MEASURE_V1",
+        "DECLARATIVE_RELATION_V1",
+        "DECLARATIVE_TIMELINE_V1",
+        "NO_FACT_BOUNDARY_V1"
+      ],
+      "operator_count": 33,
+      "operators": [
+        "ACTIVE_AND_COPY_SCOPE_PARTITION",
+        "ADJACENT_REVERSE_POSITION_OBJECTIVE_LINKAGE",
+        "ANALYSIS_STRATEGY_AND_COUNTERFACTUAL_BOUNDARY",
+        "CANONICAL_CASH_EVENT_DEDUPLICATION_AND_TRANSFER_PAIRING",
+        "CONDITION_TO_ORDER_FILL_AND_CYCLE_RELATION_GRAPH",
+        "FACT_USER_STATEMENT_INTERPRETATION_AND_STATUS_LAYERING",
+        "FEE_AND_NET_RESULT_COMPONENT_SEPARATION",
+        "FILL_PRICE_AND_WEIGHTED_AVERAGE_TRANSITION",
+        "FILL_TO_ORDER_AND_CYCLE_LINKAGE",
+        "FUTURE_SCHEMA_AND_FORMAT_BOUNDARY",
+        "IDENTIFIER_MAPPING_WITHOUT_ID_REPLACEMENT",
+        "IDENTITY_RESOLUTION_WITH_SOURCE_BOUNDARIES",
+        "MARGIN_AND_RISK_FIELDS_SEPARATED_NO_INFERENCE_FOR_MISSING_VALUES",
+        "MARKET_DATA_IDENTITY_WINDOW_AND_COVERAGE",
+        "MFE_MAE_BY_CYCLE_OR_POSITION_STAGE",
+        "NON_OBJECTIVE_USER_REASON_BOUNDARY",
+        "OBJECTIVE_ACTION_CLASSIFICATION_WITH_EVIDENCE",
+        "ORDER_AND_CONDITION_LIFECYCLE_LINKAGE",
+        "POSITION_QUANTITY_STATE_TRANSITION",
+        "POSITION_ZERO_TO_NONZERO_TO_ZERO_CYCLE_GROUPING",
+        "REALIZED_PNL_BY_FILL_AND_CYCLE",
+        "REFERENTIAL_AND_QUANTITY_INTEGRITY_CHECKS",
+        "SCREENSHOT_CONDITION_AND_CYCLE_LINEAGE_BRIDGE",
+        "SIDE_POSITION_SIDE_AND_POSITION_EFFECT_SEPARATION",
+        "STABLE_ID_AND_SOURCE_NAMESPACE_PRESERVATION",
+        "STOP_LOSS_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION",
+        "TAKE_PROFIT_LIFECYCLE_WITH_UNKNOWN_RELATION_PRESERVATION",
+        "TIMELINE_UNION_PRESERVE_EQUAL_TIME_PARALLEL_EVENTS",
+        "TIME_BOUNDED_EQUITY_ANCHORS_AND_UNKNOWN_GAPS",
+        "TIME_NORMALIZATION_WITH_ORIGINAL_VALUE_AND_PRECISION",
+        "USER_INTERFACE_PRODUCT_BOUNDARY",
+        "USER_STAGE_AGGREGATION_ACROSS_POSITION_PRICE_AND_MFE_MAE_COMPONENTS",
+        "VERSION_CORRECTION_AND_SOURCE_IDENTITY_LINEAGE"
+      ],
+      "registry_sha256": "0dd487ab5a9f4c034273ba4e5cd7f0cc3973f96214f7abf1f386843ab800e3cd",
+      "version": "1.0"
+    },
+    "receipt_persistence": "DECLARATIVE_AND_BOUNDED_BUSINESS_RESULTS_MAY_BE_WRITTEN_ONLY_TO_CALLER_NAMED_NEW_TEMPORARY_FILES; DO_NOT_APPEND_TO_10_11_12",
+    "schema_scope_summary": {
+      "jsonl_schema_policy": "UNION_ALL_NONEMPTY_OBJECT_ROWS_NOT_FIRST_ROW_ONLY",
+      "s3input_06_field_count": 30,
+      "s3input_06_record_count": 639,
+      "s3input_06_schema_variant_count": 2,
+      "source_fields_checked": 4773,
+      "unique_source_fields_checked": 678
+    },
+    "status": "DECLARATIVE_WITNESS_LAYER_COMPLETED; BOUNDED_BUSINESS_LAYER_RECORDED_SEPARATELY"
+  },
+  "bounded_business_operator_execution_v2": {
+    "layer_identity": "BOUNDED_BUSINESS_OPERATOR_EXECUTION_V2",
+    "registry_version": "2.0",
+    "registered_operator_count": 33,
+    "routed_capability_count": 94,
+    "semantic_callable_invocation_count": 69,
+    "distinct_semantic_callable_invoked_count": 28,
+    "boundary_gate_execution_count": 5,
+    "pre_callable_rejected_count": 20,
+    "unresolved_rejected_count": 19,
+    "pending_user_rejected_count": 1,
+    "candidate_business_output_count": 69,
+    "formal_fact_output_count": 0,
+    "execution_results_sha256": "03c498dcdf9434cb19dbcc161015804f144358a156dc7e4c1a47065399bcc860",
+    "scope_statement": "BOUNDED_CANDIDATE_BUSINESS_SEMANTICS_ONLY_NOT_FORMAL_FACT_NOT_FULL_136",
+    "claim_limit": "只在七十四次锁定镜像和九十四项能力规格的有界测试范围内执行；不代表四十四项正式采用，不代表三项真实重算，不代表136笔已经构建，也不产生正式业务事实。",
+    "status": "BOUNDED_CANDIDATE_EXECUTION_COMPLETED_FOR_TESTING_ONLY"
+  },
+  "clean_root": "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911",
+  "clean_root_regions": [
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/01_只读输入镜像区",
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/02_规则程序与配置区",
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/03_本次临时运行区",
+    "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行干净生产根_20260911/04_待检查输出区"
+  ],
+  "contract_id": "CTR-136-PKG1-PREP-f683d59ec39b",
+  "contract_sha256": "f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca",
+  "forbidden_actions": [
+    "READ_EXTRA_SUMMARY",
+    "FULL_136_BUILD",
+    "REAL_RECOMPUTATION",
+    "FORMAL_ADOPTION",
+    "MODIFY_FROZEN_INPUT",
+    "MODIFY_04B",
+    "MERGE_MAIN"
+  ],
+  "forbidden_extra_sample_summary": "/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_UNIFIED_EVENT_EVIDENCE.csv",
+  "formal_base_commit": "e57aa7eefac1bf0b8fe015345c7f0b42a8892597",
+  "normalization": {
+    "encoding": "UTF-8",
+    "float_for_business_decimal": false,
+    "json_sort_keys": true,
+    "line_endings": "LF"
+  },
+  "python": {
+    "implementation": "CPython",
+    "standard_library_only_for_candidate_program": true,
+    "version": "3.14.3"
+  },
+  "record_type": "FIRST_PACKAGE_BUILD_CONFIGURATION",
+  "selected_object_loader": {
+    "command": "python3 06_构建与确定性装载程序候选.py load-selected-objects --receipts 02_输入身份_选择器与装载回执候选.jsonl --output-dir <空白的只读输入镜像区>",
+    "deterministic_checks": [
+      "父文件字节数和SHA-256必须与回执一致",
+      "选择器实际数量必须与回执一致",
+      "抽取后内容SHA-256必须与回执一致",
+      "输出目录必须为空，程序不删除或覆盖既有文件",
+      "装载完成后所有镜像文件设为只读"
+    ],
+    "receipt_file": "02_输入身份_选择器与装载回执候选.jsonl"
+  },
+  "selected_object_reference_count": 74,
+  "specification_inputs": {
+    "adoption_candidates": {
+      "bytes": 159709,
+      "path": "01_四十四项采用清单候选.jsonl",
+      "sha256": "5d0d2e936af5c4c3d346f65e75dda69b7b4465478e9d3453ba6cf3a3b12ef7c3"
+    },
+    "assembly_mapping": {
+      "bytes": 6330038,
+      "path": "03_字段关系组装与能力闭合表候选.jsonl",
+      "sha256": "1d6c0ea414446a6224a05086bc83d1e1e0286b1056d2eeba5041ccefad9997ec"
+    },
+    "candidate_program": {
+      "bytes": 452730,
+      "path": "06_构建与确定性装载程序候选.py",
+      "sha256": "f9b8607e01169679987835404cacd7a331fa903f61e248b75f0887f4b57a6b76"
+    },
+    "input_receipts": {
+      "bytes": 177415,
+      "path": "02_输入身份_选择器与装载回执候选.jsonl",
+      "sha256": "a8a3e21a19fe5a72733b94b0837d50a8f1ed699fc95205adf626bbc26a77022f"
+    },
+    "normalization_schema": {
+      "bytes": 9172,
+      "path": "04_数据结构与规范化规则候选.json",
+      "sha256": "df70e09eb953c1bea804077872c24d8d43f36e7982cc354bb6d294e639dcbee9"
+    },
+    "program_tests": {
+      "bytes": 73997,
+      "path": "08_最小程序测试与预期结果候选.jsonl",
+      "sha256": "d0a9d61ed0c39357a0b88b3adfe7cb663b57ec1a471f6cc4714139822b7df02b"
+    },
+    "recomputation_contract": {
+      "bytes": 33015,
+      "path": "05_三项重新计算前置合同与依赖候选.json",
+      "sha256": "7854b3dd634d1a501f11b5ad098455c7dea59c9410017f09ceabafc678afc0f7"
+    },
+    "stage3_machine_ledger": {
+      "bytes": 1904700,
+      "path": "../../客观交易链正式构成与构建输入联合裁定_待用户核对/阶段三_PRE与POST_客观交易链正式构成与构建输入最终交叉裁定_待用户核对/阶段三_机器总账.jsonl",
+      "sha256": "d41694adfe54a0ba1a29d8ab66d991b31bc98635ccb295965eda8e5d5a4dcafa"
+    }
+  },
+  "clean_production_environment": {
+    "zones": {
+      "read_only_inputs": "01_只读输入镜像区",
+      "rules_program_config": "02_规则程序与配置区",
+      "temporary_run": "03_本次临时运行区",
+      "candidate_outputs": "04_待检查输出区"
+    },
+    "input_source_policy": "COPY_VERIFIED_LOCKED_MIRRORS_ONLY",
+    "expected_input_file_count": 74,
+    "overwrite_or_delete_existing_root_allowed": false,
+    "unexpected_file_action": "STOP",
+    "real_recomputation_allowed": false,
+    "full_136_chain_build_allowed": false,
+    "network_access_allowed": false,
+    "post_initialization_execution_policy": "ONLY_RULES_ZONE_PROGRAM_RUNTIME_CONFIG_AND_SAMPLE_MANIFEST; SOURCE_PARENT_CONFIG_OR_PROGRAM_REJECTED",
+    "integrity_verification_policy": "INTERNAL_02_RECEIPTS_BIND_74_INPUTS; INTERNAL_SOURCE_CONFIG_BINDS_RULE_PACKAGE; BUILT_OUTPUTS_ARE_INDEPENDENTLY_REBUILT_AND_COMPARED; 07B_RECEIPT_CANNOT_SELF_PROVE",
+    "source_config_file": "07_原始构建配置候选.json",
+    "runtime_config_file": "07_四区路径重绑定运行配置.json",
+    "active_program_file": "06_构建与确定性装载程序候选.py",
+    "initialization_manifest_file": "07A_四区初始化清单.json",
+    "sample_manifest_file": "09_有界验证样本清单候选.json",
+    "input_receipts_file": "02_输入身份_选择器与装载回执候选.jsonl",
+    "declarative_receipt_file": "03A_声明性能力回执.jsonl",
+    "business_result_file": "03B_有界业务算子结果.jsonl",
+    "build_receipt_file": "07B_四区有界构建回执.json",
+    "fact_base_file": "10_有界测试事实底座候选.jsonl",
+    "quality_receipt_file": "13_自动质量检查与内容指纹候选.json",
+    "built_temporary_files": [
+      "03A_声明性能力回执.jsonl",
+      "03B_有界业务算子结果.jsonl",
+      "07B_四区有界构建回执.json"
+    ],
+    "built_output_files": [
+      "10_有界测试事实底座候选.jsonl",
+      "11_AI读取测试版候选.md",
+      "12_用户核对可视化测试版候选.html",
+      "13_自动质量检查与内容指纹候选.json"
+    ],
+    "rule_package_fixed_files": [
+      {"path":"01_四十四项采用清单候选.jsonl","destination_name":"01_四十四项采用清单候选.jsonl","bytes":159709,"sha256":"5d0d2e936af5c4c3d346f65e75dda69b7b4465478e9d3453ba6cf3a3b12ef7c3"},
+      {"path":"02_输入身份_选择器与装载回执候选.jsonl","destination_name":"02_输入身份_选择器与装载回执候选.jsonl","bytes":177415,"sha256":"a8a3e21a19fe5a72733b94b0837d50a8f1ed699fc95205adf626bbc26a77022f"},
+      {"path":"03_字段关系组装与能力闭合表候选.jsonl","destination_name":"03_字段关系组装与能力闭合表候选.jsonl","bytes":6330038,"sha256":"1d6c0ea414446a6224a05086bc83d1e1e0286b1056d2eeba5041ccefad9997ec"},
+      {"path":"04_数据结构与规范化规则候选.json","destination_name":"04_数据结构与规范化规则候选.json","bytes":9172,"sha256":"df70e09eb953c1bea804077872c24d8d43f36e7982cc354bb6d294e639dcbee9"},
+      {"path":"05_三项重新计算前置合同与依赖候选.json","destination_name":"05_三项重新计算前置合同与依赖候选.json","bytes":33015,"sha256":"7854b3dd634d1a501f11b5ad098455c7dea59c9410017f09ceabafc678afc0f7"},
+      {"path":"06_构建与确定性装载程序候选.py","destination_name":"06_构建与确定性装载程序候选.py","bytes":452730,"sha256":"f9b8607e01169679987835404cacd7a331fa903f61e248b75f0887f4b57a6b76"},
+      {"path":"08_最小程序测试与预期结果候选.jsonl","destination_name":"08_最小程序测试与预期结果候选.jsonl","bytes":73997,"sha256":"d0a9d61ed0c39357a0b88b3adfe7cb663b57ec1a471f6cc4714139822b7df02b"},
+      {"path":"09_有界验证样本清单候选.json","destination_name":"09_有界验证样本清单候选.json","bytes":413811,"sha256":"9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"},
+      {"path":"../../客观交易链正式构成与构建输入联合裁定_待用户核对/阶段三_PRE与POST_客观交易链正式构成与构建输入最终交叉裁定_待用户核对/阶段三_机器总账.jsonl","destination_name":"阶段三_机器总账.jsonl","bytes":1904700,"sha256":"d41694adfe54a0ba1a29d8ab66d991b31bc98635ccb295965eda8e5d5a4dcafa"}
+    ],
+    "commands": {
+      "initialize": "python3 06_构建与确定性装载程序候选.py init-clean-root --config 07_构建配置_依赖与运行环境锁定候选.json --root <全新空目录>",
+      "build": "python3 <四区根>/02_规则程序与配置区/06_构建与确定性装载程序候选.py build-clean-root-bounded --config <四区根>/02_规则程序与配置区/07_四区路径重绑定运行配置.json --samples <四区根>/02_规则程序与配置区/09_有界验证样本清单候选.json --root <四区根>",
+      "verify": "python3 <四区根>/02_规则程序与配置区/06_构建与确定性装载程序候选.py verify-clean-root --config <四区根>/02_规则程序与配置区/07_四区路径重绑定运行配置.json --root <四区根> --phase BUILT"
+    }
+  },
+  "unique_source_path_count": 72,
+  "view_generation": {
+    "ai_view": {
+      "body_note": "按对象完整组织；对象内先放按时间排列的事实，再放关系、来源链和方法。完整normalized_value、关系、来源、状态与证明边界可由字典和模板无损还原。",
+      "boundary": "边界：只覆盖样本清单选中的有界对象；不代表136笔已经构建，不代表任何候选已正式采用。",
+      "closing_boundaries": [
+        "所有记录均可凭`fact_id`回到事实底座。",
+        "候选、UNKNOWN、区间、方法和来源链没有被升级为确定交易所事实。",
+        "稳定展示顺序只用于连续读取，不代表真实因果先后。",
+        "对象目录、逐对象正文和完整性清单必须相互对账，记录不能遗漏或重复。"
+      ],
+      "complete_record_once": true,
+      "directory_reference_only": true,
+      "identity": "身份：由`10_有界测试事实底座候选.jsonl`自动生成的测试表示，不是第二套事实。",
+      "maximum_bytes": 4194304,
+      "navigation_order": [
+        "机器清单",
+        "对象目录",
+        "逐个主动交易对象",
+        "共享账户影响",
+        "无法可靠归属对象",
+        "跟单资金对象",
+        "跨对象关系",
+        "T087方法与边界",
+        "来源追溯",
+        "完整性核对"
+      ],
+      "raw_json_policy": "完整raw_value只在唯一事实底座中保存；AI版保留其SHA-256和事实序号、fact_id、规范记录SHA-256定位，不复制第二份raw_value。",
+      "representation": "COMPACT_COMPLETE_NORMALIZED_SEMANTICS_BY_OBJECT_V2",
+      "title": "# 第一工作包｜人工智能连续读取测试版（待用户核对）"
+    },
+    "command": "python3 06_构建与确定性装载程序候选.py build-views --config 07_构建配置_依赖与运行环境锁定候选.json",
+    "inputs": {
+      "fact_base": {
+        "bytes": 19279441,
+        "file": "10_有界测试事实底座候选.jsonl",
+        "sha256": "2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9"
+      },
+      "input_receipts": {
+        "bytes": 177415,
+        "file": "02_输入身份_选择器与装载回执候选.jsonl",
+        "sha256": "a8a3e21a19fe5a72733b94b0837d50a8f1ed699fc95205adf626bbc26a77022f"
+      },
+      "sample_manifest": {
+        "bytes": 413811,
+        "file": "09_有界验证样本清单候选.json",
+        "sha256": "9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"
+      }
+    },
+    "outputs": {
+      "ai_view": "11_AI读取测试版候选.md",
+      "user_visual": "12_用户核对可视化测试版候选.html"
+    },
+    "user_visual": {
+      "format": "SELF_CONTAINED_INTERACTIVE_HTML",
+      "maximum_bytes": 12582912,
+      "external_resources_allowed": false,
+      "network_calls_allowed": false,
+      "default_object_id": "T120",
+      "page_size": 25,
+      "required_sections": [
+        "交易过程",
+        "关系连接",
+        "未知与冲突",
+        "来源依据"
+      ],
+      "responsive_widths": [1440, 390, 320],
+      "record_coverage": "EXACTLY_ONCE_IN_EMBEDDED_PRIMARY_RECORD_SET",
+      "source_of_truth": "10_有界测试事实底座候选.jsonl",
+      "raw_value_policy": "完整raw_value只留在唯一事实底座；可视化页保留fact_id、来源定位、白话摘要和必要的核对字段。",
+      "user_understandability": {
+        "current_status": "WAITING_FOR_USER_ACTUAL_REVIEW",
+        "pass_condition": "只有用户实际打开并确认能够理解，才能记为通过。",
+        "work_or_ai_self_check_limit": "程序、当前Work和其他AI只能检查内容完整、同源、页面展示和操作，不能代替用户宣布可理解。"
+      }
+    },
+    "legacy_user_workbook_inactive": {
+      "active": false,
+      "status": "HISTORICAL_GENERATOR_NOT_USED_AFTER_USER_REJECTED_EXCEL_OUTPUT",
+      "category_labels": {
+        "1_multiple_open_or_add_attempts_cancel_and_replacement": "1．多次开仓或加仓尝试、撤单和替换",
+        "2_stop_takeprofit_evolution_and_candidate_relation": "2．止损止盈演变与候选关系",
+        "3_t087_two_lawful_paths_and_outer_envelope": "3．T087同秒两条合法路径及外包络",
+        "4_external_fund_or_shared_account_impact": "4．外部资金或共享账户影响",
+        "5_adjacent_trades_and_unassigned_condition": "5．相邻交易与无法可靠归属的条件对象",
+        "6_copy_trading_effect_object": "6．跟单影响对象",
+        "7_partial_fill_reduce_close_and_continuity": "7．部分成交、减仓、平仓与仓位连续性",
+        "8_conflict_interval_multiple_candidates_or_unknown": "8．冲突、区间、多个候选或未知",
+        "9_long_object_chunk_continuity_and_two_views": "9．长对象、分块连续读取与两个同源视图"
+      },
+      "font_family": "Microsoft YaHei",
+      "column_widths": {
+        "对象目录": [18, 40, 27, 12, 12, 12, 38, 36, 16, 16, 38],
+        "事件时间线": [14, 27, 58, 28, 40, 46, 58, 30, 11, 25, 24, 18, 26, 30, 18, 24, 27, 31, 24],
+        "关系与归属": [14, 58, 28, 48, 46, 42, 58, 30, 20, 22, 30, 30, 30, 22],
+        "特殊对象与边界": [24, 44, 62, 62, 48, 44],
+        "来源追溯": [14, 38, 42, 30, 26, 55, 72, 30],
+        "输入范围": [31, 45, 22, 46, 56, 30, 75, 68, 26, 34, 16],
+        "技术原文": [11, 18, 22, 30, 11, 11, 18, 22, 34, 95]
+      },
+      "preferred_columns": {
+        "事件时间线": [
+          "对象",
+          "时间",
+          "发生了什么",
+          "目前能确定到什么程度",
+          "还不知道或必须保留什么",
+          "你需要核对什么",
+          "来源怎么展开",
+          "事实编号",
+          "顺序（技术）",
+          "北京时间（技术）",
+          "原始时间（技术）",
+          "品种（技术）",
+          "委托ID（技术）",
+          "成交ID（技术）",
+          "动作（技术）",
+          "状态（技术）",
+          "数量与价格（技术）",
+          "费用与盈亏（技术）",
+          "仓位变化（技术）"
+        ],
+        "从这里开始": [
+          "合同ID",
+          "事实底座记录数",
+          "用户原话空值数"
+        ],
+        "关系与归属": [
+          "对象",
+          "这条关系在说什么",
+          "目前能确定到什么程度",
+          "不能把它理解成什么",
+          "你需要核对什么",
+          "来源对象 → 目标对象",
+          "来源怎么展开",
+          "关系事实编号",
+          "关系类型（技术）",
+          "目标对象类型（技术）",
+          "来源事实ID（技术）",
+          "目标事实ID（技术）",
+          "关系ID（技术）",
+          "证据状态代码（技术）"
+        ],
+        "对象目录": [
+          "对象",
+          "这是什么",
+          "时间范围",
+          "事件记录",
+          "关系记录",
+          "来源记录",
+          "需要特别留意",
+          "从哪里开始看",
+          "全部记录数（技术）",
+          "方法记录数（技术）",
+          "样本标签（技术）"
+        ],
+        "技术原文": [
+          "顺序",
+          "对象入口",
+          "记录类型",
+          "事实ID",
+          "第几段",
+          "一共几段",
+          "本段UTF-16长度",
+          "完整原文UTF-16长度",
+          "完整原文SHA-256",
+          "技术原文分段"
+        ],
+        "来源追溯": [
+          "对象",
+          "对应哪一条事件",
+          "原始文件名",
+          "工作表和行号",
+          "原值是否保持",
+          "普通核对怎么找",
+          "完整路径（技术）",
+          "来源事实编号（技术）"
+        ],
+        "特殊对象与边界": [
+          "对象",
+          "这是什么",
+          "现在已经知道什么",
+          "仍然不能确定什么",
+          "用户现在怎么处理",
+          "相关记录编号"
+        ],
+        "输入范围": [
+          "本次用了什么",
+          "这是什么",
+          "本次实际取了多少",
+          "本次为什么用它",
+          "本次不能证明什么",
+          "当前身份",
+          "来源路径（技术）",
+          "选择范围（技术）",
+          "输入编号（技术）",
+          "内容指纹（技术）",
+          "对象序号（技术）"
+        ]
+      },
+      "raw_json_policy": "普通核对页不放大段JSON；最后一张‘技术原文’保存3,902条机器记录的无损分段，按事实ID和分段序号重新连接后才是完整原文。分段不改变事实底座，不生成第二套事实。",
+      "render_ranges": {
+        "从这里开始": "A1:H28",
+        "对象目录": "A1:H14",
+        "事件时间线": "A1:F24",
+        "关系与归属": "A1:F24",
+        "特殊对象与边界": "A1:F14",
+        "来源追溯": "A1:F24",
+        "输入范围": "A1:F24",
+        "技术原文": "A1:J12"
+      },
+      "row_heights": {
+        "对象目录": 66,
+        "事件时间线": 76,
+        "关系与归属": 84,
+        "特殊对象与边界": 110,
+        "来源追溯": 70,
+        "输入范围": 92,
+        "技术原文": 62
+      },
+      "runtime": {
+        "artifact_tool_module": "/Users/luodaluo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@oai/artifact-tool/dist/artifact_tool.mjs",
+        "artifact_tool_module_bytes": 11489310,
+        "artifact_tool_module_sha256": "d23c29992898aaf6efc0f78611ee34ba213579fa25e05ad4dc5dbcb356c11a89",
+        "artifact_tool_package_version": "2.8.59",
+        "node_executable": "/Users/luodaluo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+        "node_version": "v24.19.0"
+      },
+      "sheet_order": [
+        "从这里开始",
+        "对象目录",
+        "事件时间线",
+        "关系与归属",
+        "特殊对象与边界",
+        "来源追溯",
+        "输入范围",
+        "技术原文"
+      ],
+      "subtitles": {
+        "事件时间线": "最左边六列已经把一条记录需要看的内容放在一起：对象、时间、发生了什么、确定程度、仍需保留什么、用户要核对什么。",
+        "从这里开始": "先说明这是什么、怎么看、哪些还没有由用户确认；不把技术检查冒充用户理解通过。",
+        "关系与归属": "只说明固定证据中实际保存的连接。候选关系仍然是候选，不能因为放进表格就变成唯一归属或确定因果。",
+        "对象目录": "先选一行对象，再按照最右侧的提示到对应页面。建议第一次先看 T120 或 T087。",
+        "技术原文": "3902 条机器记录在这里按事实编号完整保存；超长记录按段连续拼接即可还原。用户核对时不需要阅读本页。",
+        "来源追溯": "普通核对先看文件名、工作表和行号；只有需要追查时，才看右侧完整路径和来源事实编号。",
+        "特殊对象与边界": "共享账户、未归属条件对象、跟单资金、跨对象关系和同秒多路径要单独保存，不能为了让表格整齐就塞进某一笔交易。",
+        "输入范围": "这里说明本次小范围测试到底用了什么、取了多少、能证明什么和不能证明什么；不表示这些输入已经被正式采用。"
+      },
+      "tab_colors": [
+        "#1D4ED8",
+        "#0F766E",
+        "#2563EB",
+        "#7C3AED",
+        "#B45309",
+        "#BE123C",
+        "#475569",
+        "#64748B"
+      ],
+      "titles": {
+        "对象目录": "先选一个对象",
+        "事件时间线": "按时间看这笔交易发生了什么",
+        "关系与归属": "看记录之间是怎么连接的",
+        "特殊对象与边界": "这些内容不能硬塞进单笔交易",
+        "来源追溯": "需要时再展开原始来源",
+        "输入范围": "本次测试实际用了哪些材料",
+        "技术原文": "机器完整原文（用户不用读）"
+      },
+      "technical_text_chunking": {
+        "automatic_chunking_scope": "TECHNICAL_RAW_SHEET_ONLY",
+        "chunk_column": "技术原文分段",
+        "chunks_individually_valid_json_required": false,
+        "complete_text_fingerprint": "UTF-8_SHA256",
+        "documented_excel_cell_limit_utf16_units": 32767,
+        "enabled": true,
+        "grouping_key": "事实ID",
+        "length_unit": "UTF-16_CODE_UNITS",
+        "other_sheet_over_limit_behavior": "STOP",
+        "reassembly_check": "EXACT_TEXT_EQUALITY",
+        "safe_cell_limit_utf16_units": 30000,
+        "sort_keys": [
+          "顺序",
+          "第几段"
+        ],
+        "split_method": "UNICODE_CODE_POINT_BOUNDARY",
+        "truncation_forbidden": true,
+        "unicode_normalization_forbidden": true,
+        "worksheet": "技术原文"
+      },
+      "user_understandability": {
+        "current_status": "WAITING_FOR_ACTUAL_USER_REVIEW",
+        "pass_condition": "只有用户实际打开并确认能够理解，才能记为通过。",
+        "work_or_ai_self_check_limit": "程序、当前Work和其他AI只能检查内容完整、同源和排版，不能代替用户宣布可理解。"
+      },
+      "user_column_counts": {
+        "对象目录": 8,
+        "事件时间线": 8,
+        "关系与归属": 8,
+        "特殊对象与边界": 6,
+        "来源追溯": 6,
+        "输入范围": 6,
+        "技术原文": 0
+      }
+    },
+    "verification": {
+      "input_receipt_count": 74,
+      "record_count": 3902,
+      "record_type_counts": {
+        "FACT_STATEMENT": 1306,
+        "LINEAGE_STATEMENT": 1336,
+        "METHOD_EVIDENCE": 2,
+        "RELATION_STATEMENT": 1258
+      },
+      "sample_category_count": 9,
+      "user_visual_object_count": 11,
+      "user_visual_record_id_coverage_exact": true,
+      "user_visual_self_contained": true
+    }
+  },
+  "worktree": "/Users/luodaluo/Documents/Codex/交易复盘_136笔生产准备_重新执行隔离工作区_20260911"
+}
