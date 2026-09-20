@@ -4800,10 +4800,15 @@ USER_VISUAL_TEMPLATE='''<!doctype html>
 <section id="reviewPanel" role="tabpanel" aria-labelledby="tab-events"><div class="section-head"><div><h2 id="sectionTitle"></h2><p id="sectionHint"></p></div><p id="resultCount" aria-live="polite"></p></div><div id="cards" class="cards"></div><div id="pager" class="pager"></div></section>
 <section class="panel integrity" id="integrity"></section>
 </main>
-<script id="visual-data" type="application/json">__VISUAL_DATA__</script>
+__LOCAL_DATA_SCRIPTS__
 <script>
 (()=>{'use strict';
-const data=JSON.parse(document.getElementById('visual-data').textContent);const byId=new Map(data.objects.map(o=>[o.id,o]));const reduceMotion=Boolean(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const manifest=window.__TRADING_REVIEW_VISUAL_MANIFEST__,loaded=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
+if(!manifest||loaded.length!==manifest.chunks.length)throw new Error('用户核对版的数据文件不完整');
+const loadedByFile=new Map(loaded.map(x=>[x.file,x]));if(loadedByFile.size!==loaded.length)throw new Error('用户核对版存在重复数据文件');
+const data={meta:manifest.meta,objects:manifest.objects.map(o=>({...o,records:o.chunk_files.flatMap(name=>{const part=loadedByFile.get(name);if(!part||part.object_id!==o.id)throw new Error('用户核对版数据顺序或归属不一致');return part.records})}))};
+if(data.objects.reduce((n,o)=>n+o.records.length,0)!==data.meta.record_count)throw new Error('用户核对版记录数不一致');
+const byId=new Map(data.objects.map(o=>[o.id,o]));const reduceMotion=Boolean(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const select=document.getElementById('objectSelect'),cards=document.getElementById('cards'),pager=document.getElementById('pager');let current=data.meta.default_object_id,tab='events',page=1;
 const labels={events:['交易过程','按时间和固定展示顺序查看事实事件。'],relations:['关系连接','查看委托、成交、仓位或资金之间怎样相连。'],attention:['未知、候选与冲突','这些内容必须保留不确定性，不能被写成已确定事实。'],sources:['来源依据','查看每条记录来自哪个文件、哪张表或哪一行。']};
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
@@ -4824,19 +4829,94 @@ document.getElementById('identity').textContent=data.meta.identity;document.getE
 </body></html>
 '''
 
-def build_user_visual_html(payload):
-    embedded=canonical(payload).replace('<','\\u003c')
-    return USER_VISUAL_TEMPLATE.replace('__VISUAL_DATA__',embedded)
+def visual_asset_safe_id(value):
+    safe=re.sub(r'[^A-Za-z0-9]+','_',str(value)).strip('_')
+    if not safe: raise RuntimeError('USER_VISUAL_OBJECT_ID_CANNOT_FORM_SAFE_FILE_NAME:'+str(value))
+    return safe
 
-def user_visual_embedded_payload(html):
-    match=re.search(r'<script id="visual-data" type="application/json">(.*?)</script>',html,re.S)
-    if not match: raise RuntimeError('USER_VISUAL_EMBEDDED_PAYLOAD_MISSING')
+def user_visual_chunk_text(chunk):
+    header={key:chunk[key] for key in ('file','global_index','object_position','object_id','chunk_index','chunk_count')}
+    lines=['window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];','window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({']
+    for key,value in header.items(): lines.append(json.dumps(key,ensure_ascii=False)+':'+canonical(value)+',')
+    lines.append('"records":[')
+    lines.extend(canonical(record)+(',' if index<len(chunk['records'])-1 else '') for index,record in enumerate(chunk['records']))
+    lines.extend([']','});',''])
+    return '\n'.join(lines)
+
+def user_visual_index_text(manifest):
+    return 'window.__TRADING_REVIEW_VISUAL_MANIFEST__='+json.dumps(manifest,ensure_ascii=False,sort_keys=True,indent=2,separators=(',',':'))+';\n'
+
+def user_visual_chunk_from_text(text):
+    match=re.fullmatch(r'window\.__TRADING_REVIEW_VISUAL_CHUNKS__=window\.__TRADING_REVIEW_VISUAL_CHUNKS__\|\|\[\];\nwindow\.__TRADING_REVIEW_VISUAL_CHUNKS__\.push\((.*)\);\n',text,re.S)
+    if not match: raise RuntimeError('USER_VISUAL_CHUNK_SCRIPT_FORMAT_INVALID')
     return json.loads(match.group(1))
 
+def user_visual_manifest_from_text(text):
+    prefix='window.__TRADING_REVIEW_VISUAL_MANIFEST__='
+    if not text.startswith(prefix) or not text.endswith(';\n'):
+        raise RuntimeError('USER_VISUAL_INDEX_SCRIPT_FORMAT_INVALID')
+    return json.loads(text[len(prefix):-2])
+
+def build_user_visual_bundle(payload,settings):
+    index_file=settings['data_index_file']; prefix=settings['chunk_file_prefix']
+    maximum_chunk_bytes=int(settings['maximum_chunk_bytes'])
+    if Path(index_file).name!=index_file or Path(prefix).name!=prefix or not index_file.endswith('.js'):
+        raise RuntimeError('USER_VISUAL_ASSET_FILE_NAME_CONFIGURATION_INVALID')
+    chunks=[]; object_summaries=[]; global_index=0
+    for object_position,obj in enumerate(payload['objects'],1):
+        records=obj['records']; groups=[]; current=[]
+        safe=visual_asset_safe_id(obj['id'])
+        for record in records:
+            trial=current+[record]
+            provisional={
+                'file':f'{prefix}{object_position:02d}_{safe}_{len(groups)+1:04d}.js',
+                'global_index':global_index+len(groups)+1,'object_position':object_position,
+                'object_id':obj['id'],'chunk_index':len(groups)+1,'chunk_count':9999,'records':trial,
+            }
+            if len(user_visual_chunk_text(provisional).encode('utf-8'))<=maximum_chunk_bytes:
+                current=trial
+            else:
+                if not current: raise RuntimeError('USER_VISUAL_SINGLE_RECORD_EXCEEDS_CHUNK_LIMIT:'+record['id'])
+                groups.append(current); current=[record]
+        if current: groups.append(current)
+        object_files=[]
+        for chunk_index,group in enumerate(groups,1):
+            global_index+=1
+            file=f'{prefix}{object_position:02d}_{safe}_{chunk_index:04d}.js'
+            chunk={
+                'file':file,'global_index':global_index,'object_position':object_position,
+                'object_id':obj['id'],'chunk_index':chunk_index,'chunk_count':len(groups),'records':group,
+            }
+            text=user_visual_chunk_text(chunk); size=len(text.encode('utf-8'))
+            if size>maximum_chunk_bytes: raise RuntimeError('USER_VISUAL_CHUNK_EXCEEDS_LIMIT:'+file)
+            chunks.append({'file':file,'text':text,'chunk':chunk,'bytes':size,'sha256':hashlib.sha256(text.encode('utf-8')).hexdigest()})
+            object_files.append(file)
+        summary={key:value for key,value in obj.items() if key!='records'}
+        summary['chunk_files']=object_files; object_summaries.append(summary)
+    manifest={
+        'package_version':'1.0','identity':'第12号用户核对版的本地离线分块数据索引，不是第二套事实。',
+        'meta':payload['meta'],'objects':object_summaries,
+        'chunks':[
+            {
+                'file':item['file'],'global_index':item['chunk']['global_index'],'object_position':item['chunk']['object_position'],
+                'object_id':item['chunk']['object_id'],'chunk_index':item['chunk']['chunk_index'],'chunk_count':item['chunk']['chunk_count'],
+                'record_count':len(item['chunk']['records']),'first_fact_id':item['chunk']['records'][0]['id'],
+                'last_fact_id':item['chunk']['records'][-1]['id'],'bytes':item['bytes'],'sha256':item['sha256'],
+            } for item in chunks
+        ],
+        'payload_content_sha256':hashlib.sha256(canonical(payload).encode('utf-8')).hexdigest(),
+        'record_count':payload['meta']['record_count'],'object_count':payload['meta']['object_count'],
+    }
+    index_text=user_visual_index_text(manifest)
+    script_names=[index_file,*[item['file'] for item in chunks]]
+    script_tags='\n'.join(f'<script src="{name}"></script>' for name in script_names)
+    html=USER_VISUAL_TEMPLATE.replace('__LOCAL_DATA_SCRIPTS__',script_tags)
+    return {'html':html,'index_file':index_file,'index_text':index_text,'manifest':manifest,'chunks':chunks,'script_names':script_names}
+
 def validate_user_visual_inline_javascript(html):
-    matches=re.findall(r'<script(?: [^>]*)?>(.*?)</script>',html,re.S)
-    if len(matches)!=2: raise RuntimeError('USER_VISUAL_SCRIPT_COUNT_INVALID')
-    script=matches[1]; stack=[]; quote=None; escaped=False; line_comment=False; block_comment=False; index=0
+    matches=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>',html,re.S|re.I)
+    if len(matches)!=1: raise RuntimeError('USER_VISUAL_INLINE_SCRIPT_COUNT_INVALID')
+    script=matches[0]; stack=[]; quote=None; escaped=False; line_comment=False; block_comment=False; index=0
     pairs={')':'(',']':'[','}':'{'}
     while index<len(script):
         char=script[index]; following=script[index+1] if index+1<len(script) else ''
@@ -4859,23 +4939,56 @@ def validate_user_visual_inline_javascript(html):
     if quote or escaped or block_comment or stack: raise RuntimeError('USER_VISUAL_JAVASCRIPT_UNTERMINATED_STRUCTURE')
     return True
 
-def validate_user_visual_html(html,payload,records,fact_path,maximum_bytes=12*1024*1024):
-    if len(html.encode('utf-8'))>maximum_bytes: raise RuntimeError('USER_VISUAL_HTML_TOO_LARGE')
-    embedded=user_visual_embedded_payload(html)
-    if canonical(embedded)!=canonical(payload): raise RuntimeError('USER_VISUAL_EMBEDDED_PAYLOAD_MISMATCH')
-    checked=validate_user_visual_payload(embedded,records,fact_path)
+def validate_user_visual_bundle(bundle,payload,records,fact_path,settings):
+    html=bundle['html']; maximum_html_bytes=int(settings['maximum_entry_html_bytes']); maximum_index_bytes=int(settings['maximum_index_bytes']); maximum_chunk_bytes=int(settings['maximum_chunk_bytes'])
+    if len(html.encode('utf-8'))>maximum_html_bytes: raise RuntimeError('USER_VISUAL_ENTRY_HTML_TOO_LARGE')
+    if len(bundle['index_text'].encode('utf-8'))>maximum_index_bytes: raise RuntimeError('USER_VISUAL_INDEX_TOO_LARGE')
+    checked=validate_user_visual_payload(payload,records,fact_path)
+    manifest=user_visual_manifest_from_text(bundle['index_text'])
+    if canonical(manifest)!=canonical(bundle['manifest']): raise RuntimeError('USER_VISUAL_INDEX_CONTENT_MISMATCH')
+    expected_scripts=[bundle['index_file'],*[item['file'] for item in bundle['chunks']]]
+    actual_scripts=re.findall(r'<script\s+src="([^"]+)"\s*></script>',html,re.I)
+    if actual_scripts!=expected_scripts or len(actual_scripts)!=len(set(actual_scripts)):
+        raise RuntimeError('USER_VISUAL_LOCAL_SCRIPT_SET_OR_ORDER_MISMATCH')
+    for name in actual_scripts:
+        if Path(name).name!=name or '..' in name or not name.endswith('.js'):
+            raise RuntimeError('USER_VISUAL_LOCAL_SCRIPT_PATH_INVALID:'+name)
+    parsed_chunks=[]
+    for position,item in enumerate(bundle['chunks'],1):
+        text=item['text']; parsed=user_visual_chunk_from_text(text)
+        if parsed['file']!=item['file'] or parsed['global_index']!=position:
+            raise RuntimeError('USER_VISUAL_CHUNK_IDENTITY_OR_ORDER_MISMATCH:'+item['file'])
+        if len(text.encode('utf-8'))>maximum_chunk_bytes: raise RuntimeError('USER_VISUAL_CHUNK_EXCEEDS_LIMIT:'+item['file'])
+        meta=manifest['chunks'][position-1]
+        if meta['file']!=item['file'] or meta['bytes']!=len(text.encode('utf-8')) or meta['sha256']!=hashlib.sha256(text.encode('utf-8')).hexdigest():
+            raise RuntimeError('USER_VISUAL_CHUNK_MANIFEST_BINDING_MISMATCH:'+item['file'])
+        parsed_chunks.append(parsed)
+    reconstructed={
+        'meta':manifest['meta'],
+        'objects':[{**{key:value for key,value in obj.items() if key!='chunk_files'},'records':[record for name in obj['chunk_files'] for part in parsed_chunks if part['file']==name for record in part['records']]} for obj in manifest['objects']],
+    }
+    if canonical(reconstructed)!=canonical(payload): raise RuntimeError('USER_VISUAL_RECONSTRUCTED_PAYLOAD_MISMATCH')
+    if manifest['payload_content_sha256']!=hashlib.sha256(canonical(payload).encode('utf-8')).hexdigest():
+        raise RuntimeError('USER_VISUAL_PAYLOAD_FINGERPRINT_MISMATCH')
     forbidden=(
-        r'<script[^>]+src=',r'<link[^>]+href=',r'<img[^>]+src=["\']https?://',r'<(?:iframe|object|embed)\b',
+        r'<link[^>]+href=',r'<img[^>]+src=["\']https?://',r'<(?:iframe|object|embed)\b',
         r'@import\b',r'url\(\s*["\']?https?://',r'\bfetch\s*\(',r'XMLHttpRequest',r'WebSocket\s*\(',
         r'EventSource\s*\(',r'sendBeacon\s*\(',r'\bimport\s*\(',
     )
     if any(re.search(pattern,html,re.I) for pattern in forbidden): raise RuntimeError('USER_VISUAL_EXTERNAL_RESOURCE_OR_NETWORK_CALL_FOUND')
-    required=('objectSelect','metrics','cards','pager','visual-data','交易过程','关系连接','未知与冲突','来源依据')
+    required=('objectSelect','metrics','cards','pager','__TRADING_REVIEW_VISUAL_MANIFEST__','交易过程','关系连接','未知与冲突','来源依据')
     if any(value not in html for value in required): raise RuntimeError('USER_VISUAL_REQUIRED_CONTROL_OR_SECTION_MISSING')
     if "record.id+'\n" in html or "record.id+'\\n" not in html: raise RuntimeError('USER_VISUAL_JAVASCRIPT_NEWLINE_ESCAPE_INVALID')
     validate_user_visual_inline_javascript(html)
     if '用户核对表格' in html: raise RuntimeError('USER_VISUAL_ACTIVE_EXCEL_LANGUAGE_FOUND')
-    return {**checked,'bytes':len(html.encode('utf-8')),'self_contained_no_external_resources':True,'plain_chinese_visual_sections_present':True,'responsive_rules_present':'@media(max-width:380px)' in html,'reduced_motion_rule_present':'prefers-reduced-motion' in html and "reduceMotion?'auto':'smooth'" in html,'inline_javascript_static_structure_valid':True}
+    return {
+        **checked,'bytes':len(html.encode('utf-8')),'offline_local_bundle_no_network':True,
+        'entry_html_small':True,'data_index_file':bundle['index_file'],'data_chunk_file_count':len(bundle['chunks']),
+        'all_data_chunks_within_limit':True,'manifest_and_chunks_exact':True,'plain_chinese_visual_sections_present':True,
+        'responsive_rules_present':'@media(max-width:380px)' in html,
+        'reduced_motion_rule_present':'prefers-reduced-motion' in html and "reduceMotion?'auto':'smooth'" in html,
+        'inline_javascript_static_structure_valid':True,
+    }
 
 def build_views(config_path, output_dir=None, preview_dir=None, verification_output=None, fact_base_override=None):
     config_path=Path(config_path).resolve()
@@ -4911,16 +5024,30 @@ def build_views(config_path, output_dir=None, preview_dir=None, verification_out
     if not compact_mode and ai_view_records(ai_text)!=records: raise RuntimeError('AI_VIEW_FACT_RECONCILIATION_FAILED')
     visual_payload=build_user_visual_payload(records,fact_path,config['contract_id'])
     visual_payload_check=validate_user_visual_payload(visual_payload,records,fact_path)
-    visual_html=build_user_visual_html(visual_payload)
-    visual_check=validate_user_visual_html(visual_html,visual_payload,records,fact_path,int(view['user_visual']['maximum_bytes']))
+    visual_bundle=build_user_visual_bundle(visual_payload,view['user_visual'])
+    visual_check=validate_user_visual_bundle(visual_bundle,visual_payload,records,fact_path,view['user_visual'])
+    visual_asset_names=[visual_bundle['index_file'],*[item['file'] for item in visual_bundle['chunks']]]
+    configured_assets=view['user_visual'].get('expected_data_asset_files')
+    if configured_assets is not None and visual_asset_names!=configured_assets:
+        raise RuntimeError('USER_VISUAL_CONFIGURED_ASSET_SET_MISMATCH')
     with tempfile.TemporaryDirectory(prefix='.view-build-',dir=target_dir) as temp_name:
         temp=Path(temp_name)
         ai_temp=temp/'ai.md'
         visual_temp=temp/'user.html'
         ai_temp.write_text(ai_text,encoding='utf-8',newline='\n')
-        visual_temp.write_text(visual_html,encoding='utf-8',newline='\n')
+        visual_temp.write_text(visual_bundle['html'],encoding='utf-8',newline='\n')
+        asset_temps={visual_bundle['index_file']:temp/visual_bundle['index_file']}
+        asset_temps[visual_bundle['index_file']].write_text(visual_bundle['index_text'],encoding='utf-8',newline='\n')
+        for item in visual_bundle['chunks']:
+            asset_temps[item['file']]=temp/item['file']
+            asset_temps[item['file']].write_text(item['text'],encoding='utf-8',newline='\n')
+        prefix=view['user_visual']['chunk_file_prefix']
+        stale=[path for path in target_dir.iterdir() if path.is_file() and (path.name==visual_bundle['index_file'] or path.name.startswith(prefix)) and path.name not in set(visual_asset_names)]
+        if stale: raise RuntimeError('USER_VISUAL_STALE_DATA_ASSET_FOUND:'+','.join(path.name for path in stale))
         os.replace(ai_temp,ai_output)
         os.replace(visual_temp,visual_output)
+        for name,path in asset_temps.items(): os.replace(path,target_dir/name)
+    asset_manifest=[{'file':name,'bytes':(target_dir/name).stat().st_size,'sha256':sha_file(target_dir/name)} for name in visual_asset_names]
     result={
         'all_pass':True,
         'source_fact_base':str(fact_path),
@@ -4928,7 +5055,11 @@ def build_views(config_path, output_dir=None, preview_dir=None, verification_out
         'fact_base_sha256':sha_file(fact_path),
         'view_content_sha256':hashlib.sha256(canonical(visual_payload).encode('utf-8')).hexdigest(),
         'ai_view':{'path':str(ai_output),'bytes':ai_output.stat().st_size,'sha256':sha_file(ai_output),'record_order_exact':True,'compact_complete_index':compact_check},
-        'user_visual':{'path':str(visual_output),'bytes':visual_output.stat().st_size,'sha256':sha_file(visual_output),**visual_payload_check,**visual_check},
+        'user_visual':{
+            'path':str(visual_output),'bytes':visual_output.stat().st_size,'sha256':sha_file(visual_output),
+            'asset_file_count':len(asset_manifest),'asset_manifest':asset_manifest,
+            **visual_payload_check,**visual_check,
+        },
         'one_command':view['command'],
     }
     if verification_output:
@@ -5207,11 +5338,13 @@ def _verify_clean_root_state(config_path,root,phase,require_internal_program=Tru
             with contextlib.redirect_stdout(io.StringIO()):
                 build(config_path,zone_samples,expected_fact,zones['read_only_inputs'])
                 build_views(config_path,temp,None,expected_qa,expected_fact)
-            for name,expected_path in (
+            expected_output_pairs=[
                 (policy['fact_base_file'],expected_fact),
                 (config['view_generation']['outputs']['ai_view'],temp/config['view_generation']['outputs']['ai_view']),
                 (config['view_generation']['outputs']['user_visual'],temp/config['view_generation']['outputs']['user_visual']),
-            ):
+            ]
+            expected_output_pairs.extend((name,temp/name) for name in config['view_generation']['user_visual']['expected_data_asset_files'])
+            for name,expected_path in expected_output_pairs:
                 actual_path=outputs[name]
                 if actual_path.stat().st_size!=expected_path.stat().st_size or sha_file(actual_path)!=sha_file(expected_path):
                     raise RuntimeError('CLEAN_ENVIRONMENT_INDEPENDENT_REBUILD_MISMATCH:'+name)
@@ -5639,8 +5772,8 @@ def run_tests(test_path):
             fact_path=(base/inp['fact_base_file']).resolve(); records=read_jsonl(fact_path)
             config=json.load(open((base/inp['config_file']).resolve(),encoding='utf-8'))
             payload=build_user_visual_payload(records,fact_path,config['contract_id'])
-            html=build_user_visual_html(payload)
-            maximum=int(config['view_generation']['user_visual']['maximum_bytes'])
+            settings=config['view_generation']['user_visual']
+            bundle=build_user_visual_bundle(payload,settings); html=bundle['html']
             if kind=='user_visual_payload_complete':
                 checked=validate_user_visual_payload(payload,records,fact_path)
                 actual={key:checked[key] for key in exp}
@@ -5654,28 +5787,49 @@ def run_tests(test_path):
                 for mutated in mutations:
                     try: validate_user_visual_payload(mutated,records,fact_path); rejected.append(False)
                     except RuntimeError: rejected.append(True)
-                actual=all(rejected) and len(rejected)==4
+                bundle_mutations=[]
+                missing=json.loads(canonical({'index_file':bundle['index_file'],'manifest':bundle['manifest']})); missing_chunks=list(bundle['chunks'][:-1]); bundle_mutations.append({**bundle,'chunks':missing_chunks})
+                duplicated_chunks=list(bundle['chunks'])+[bundle['chunks'][0]]; bundle_mutations.append({**bundle,'chunks':duplicated_chunks})
+                reversed_chunks=list(bundle['chunks']); reversed_chunks[0],reversed_chunks[1]=reversed_chunks[1],reversed_chunks[0]; bundle_mutations.append({**bundle,'chunks':reversed_chunks})
+                tampered_chunks=[dict(item) for item in bundle['chunks']]; tampered_chunks[0]=dict(tampered_chunks[0]); tampered_chunks[0]['text']=tampered_chunks[0]['text'].replace('"records":[','"records":[{"id":"TAMPER"},',1); bundle_mutations.append({**bundle,'chunks':tampered_chunks})
+                bundle_rejected=[]
+                for mutated_bundle in bundle_mutations:
+                    try: validate_user_visual_bundle(mutated_bundle,payload,records,fact_path,settings); bundle_rejected.append(False)
+                    except (RuntimeError,KeyError,IndexError,json.JSONDecodeError): bundle_rejected.append(True)
+                actual=all(rejected) and len(rejected)==4 and all(bundle_rejected) and len(bundle_rejected)==4
             elif kind=='user_visual_deterministic':
-                second=build_user_visual_html(build_user_visual_payload(records,fact_path,config['contract_id']))
-                actual=html==second and hashlib.sha256(html.encode('utf-8')).hexdigest()==hashlib.sha256(second.encode('utf-8')).hexdigest()
+                second=build_user_visual_bundle(build_user_visual_payload(records,fact_path,config['contract_id']),settings)
+                actual=(
+                    bundle['html']==second['html'] and bundle['index_text']==second['index_text'] and
+                    [(item['file'],item['text']) for item in bundle['chunks']]==[(item['file'],item['text']) for item in second['chunks']]
+                )
             elif kind=='user_visual_external_resource_rejected':
                 injected_variants=(
-                    html.replace('</head>','<script src="https://example.invalid/forbidden.js"></script></head>',1),
+                    html.replace(f'<script src="{bundle["index_file"]}"></script>','<script src="https://example.invalid/forbidden.js"></script>',1),
+                    html.replace('</head>','<script src="unapproved-local.js"></script></head>',1),
                     html.replace('</style>','@import "https://example.invalid/forbidden.css";</style>',1),
                     html.replace('</main>','<iframe src="https://example.invalid/"></iframe></main>',1),
                     html.replace('</body>','<script>fetch("https://example.invalid/")</script></body>',1),
                 )
                 rejected=[]
                 for injected in injected_variants:
-                    try: validate_user_visual_html(injected,payload,records,fact_path,maximum); rejected.append(False)
-                    except RuntimeError as error: rejected.append(str(error).startswith('USER_VISUAL_EXTERNAL_RESOURCE_OR_NETWORK_CALL_FOUND'))
+                    try: validate_user_visual_bundle({**bundle,'html':injected},payload,records,fact_path,settings); rejected.append(False)
+                    except RuntimeError: rejected.append(True)
                 actual=all(rejected)
             else:
-                checked=validate_user_visual_html(html,payload,records,fact_path,maximum)
+                checked=validate_user_visual_bundle(bundle,payload,records,fact_path,settings)
                 outputs=config['view_generation']['outputs']
                 detail_labels={detail['label'] for obj in payload['objects'] for record in obj['records'] for detail in record['details']}
+                allowed_outputs=set(config.get('allowed_git_outputs',[]))
+                visual_bundle_names={outputs.get('user_visual',''),*settings.get('expected_data_asset_files',[])}
+                visual_entry_paths=[item for item in allowed_outputs if Path(item).name==outputs.get('user_visual','')]
+                expected_visual_bundle_paths=(
+                    {str(Path(visual_entry_paths[0]).parent/name) for name in visual_bundle_names}
+                    if len(visual_entry_paths)==1 else set()
+                )
                 actual={
                     'no_active_excel_output':outputs.get('user_visual','').endswith('.html') and all(not str(value).endswith('.xlsx') for value in outputs.values()),
+                    'all_visual_bundle_files_allowed_git_outputs':len(visual_entry_paths)==1 and expected_visual_bundle_paths.issubset(allowed_outputs),
                     'plain_chinese_sections_present':checked['plain_chinese_visual_sections_present'],
                     'responsive_rules_present':checked['responsive_rules_present'],
                     'reduced_motion_respected':checked['reduced_motion_rule_present'],
@@ -5683,6 +5837,9 @@ def run_tests(test_path):
                     'plain_detail_labels_in_chinese':detail_labels.issubset(set(VISUAL_DETAIL_LABELS.values())),
                     'short_user_guide_present':'怎么核对' in html and '记下卡片底部的事实编号' in html,
                     'user_understandability_waiting':checked['user_understandability_status']=='WAITING_FOR_USER_ACTUAL_REVIEW',
+                    'entry_html_small':checked['entry_html_small'],
+                    'offline_local_bundle_no_network':checked['offline_local_bundle_no_network'],
+                    'manifest_and_chunks_exact':checked['manifest_and_chunks_exact'],
                 }
         elif kind in {'compact_ai_view_complete_and_smaller','compact_ai_view_mutations_rejected'}:
             records=read_jsonl((base/inp['fact_base_file']).resolve()); manifest=json.load(open((base/inp['sample_file']).resolve(),encoding='utf-8')); config=json.load(open((base/inp['config_file']).resolve(),encoding='utf-8'))

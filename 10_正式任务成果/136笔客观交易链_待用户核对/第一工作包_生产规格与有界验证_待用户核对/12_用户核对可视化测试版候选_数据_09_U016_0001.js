@@ -1,0 +1,14 @@
+window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
+window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
+"file":"12_用户核对可视化测试版候选_数据_09_U016_0001.js",
+"global_index":16,
+"object_position":9,
+"object_id":"U016",
+"chunk_index":1,
+"chunk_count":1,
+"records":[
+{"adoption_status":"NOT_FORMALLY_ADOPTED","attention":false,"attention_text":"","can_prove":"固定来源链表记录了事件与源对象的追溯关系。","cannot_prove":"来源链本身不提高业务结论的证据等级。","canonical_record_sha256":"8ddb88d2995ba56c6562eebd3a2696691460599c199ac797d513852a6b3ac565","details":[{"label":"事件类型","value":"跟单资金影响"}],"evidence":"限定范围证据","execution_status":"NOT_APPLICABLE","id":"LIN-9da0afd6f49c54ce1ddc4acc","relation":null,"sequence":3891,"source":{"file":"K05_EVENT_LINEAGE.csv","locator":"data-row-31828","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINEAGE.csv","row":31828,"table":"lineage"},"summary":"来源追溯：K05-COPY-S05-CYC-f5209ccb8ad1f1dd70509a10来自K04_12_COPY_FUNDS_ONLY_STANDARDIZED.csv，CSV第12行。","symbol":null,"time":"时间未记录","type":"LINEAGE_STATEMENT","type_label":"来源依据"},
+{"adoption_status":"NOT_FORMALLY_ADOPTED","attention":false,"attention_text":"","can_prove":"固定连接表记录了该关系声明及其等级。","cannot_prove":"候选或上下文关系不升级为直接因果或唯一归属。","canonical_record_sha256":"a23ae86117343b148727e7a7c778b5015f6ccf72d175b024ab74912ef4a0d25c","details":[],"evidence":"直接证据","execution_status":"NOT_APPLICABLE","id":"REL-4308a8974aec386f574ee6cc","relation":{"source":"K05-COPY-S05-CYC-f5209ccb8ad1f1dd70509a10","source_fact":"FACT-b04121155bd4a02a7bc108e7","target":"S05-CYC-f5209ccb8ad1f1dd70509a10","target_fact":"FACT-341ff261318131d205337bc4","type":"COPY_FUNDS_NODE"},"sequence":3892,"source":{"file":"K05_EVENT_LINKAGE_MATRIX.csv","locator":"data-row-9140","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/02_连接与证据等级/K05_EVENT_LINKAGE_MATRIX.csv","row":9140,"table":"linkage"},"summary":"关系：K05-COPY-S05-CYC-f5209ccb8ad1f1dd70509a10 —跟单资金节点关系/仅资金对象的稳定关键字直接对应→ S05-CYC-f5209ccb8ad1f1dd70509a10。","symbol":null,"time":"时间未记录","type":"RELATION_STATEMENT","type_label":"关系连接"},
+{"adoption_status":"NOT_FORMALLY_ADOPTED","attention":true,"attention_text":"有未知值","can_prove":"该行在固定K05源表中的原始字段和值。","cannot_prove":"不自动证明候选关系、原因、意图、资金归属或时间重叠的因果。","canonical_record_sha256":"911abde3776da0aee949e86a908fa8a94677d3c770c625447384ef797a3597ce","details":[{"label":"交易品种","value":"BTCUSDT"},{"label":"已实现盈亏","value":"-2.9263"}],"evidence":"限定范围证据","execution_status":"NOT_APPLICABLE","id":"FACT-b04121155bd4a02a7bc108e7","relation":null,"sequence":3893,"source":{"file":"K05_COPY_FUNDS_ONLY_EVENT.csv","locator":"data-row-12","path":"/Users/luodaluo/Desktop/30天复盘原始数据/05_基础委托成交仓位条件委托与资金事件统一证据层/01_统一事件证据层/K05_COPY_FUNDS_ONLY_EVENT.csv","row":12,"table":"copy"},"summary":"跟单资金影响：BTCUSDT 做空，已知净影响-3.17828525，资金费UNKNOWN。","symbol":"BTCUSDT","time":"2026-06-19 00:14:03+0800","type":"FACT_STATEMENT","type_label":"事实事件"}
+]
+});

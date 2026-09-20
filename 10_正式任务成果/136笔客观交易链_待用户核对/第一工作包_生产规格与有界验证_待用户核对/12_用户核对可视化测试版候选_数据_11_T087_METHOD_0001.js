@@ -1,0 +1,13 @@
+window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
+window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
+"file":"12_用户核对可视化测试版候选_数据_11_T087_METHOD_0001.js",
+"global_index":18,
+"object_position":11,
+"object_id":"T087_METHOD",
+"chunk_index":1,
+"chunk_count":1,
+"records":[
+{"adoption_status":"NOT_FORMALLY_ADOPTED","attention":true,"attention_text":"存在冲突：T087-SAME-SECOND-UNIQUE-ORDER-NOT-PROVEN；这是方法边界，不是新计算结果","can_prove":"冻结方法声明唯一顺序未证明，并规定外包络。","cannot_prove":"不证明哪条路径是真实历史顺序，也不表示已执行新的真实重算。","canonical_record_sha256":"8a7a2fedd561ffc5e9c978ed216626634331162db3f2b7810677d8b42ed689a3","details":[],"evidence":"限定范围证据","execution_status":"NOT_AUTHORIZED","id":"METHOD-62cf45b9d9ba19e813b88caa","relation":null,"sequence":3901,"source":{"file":"EQ_P2_RW002_CURRENT_EFFECTIVE_BASELINE.json","locator":"selected-object-1","path":"/Users/luodaluo/Desktop/30天复盘原始数据/00_WORK总控/24_账户权益重建专项/02_EQ-P2_固定10笔与全部关键动作节点账户权益计算/03_RW002_T087同秒边界纠偏/EQ_P2_RW002_CURRENT_EFFECTIVE_BASELINE.json","row":null,"table":"method"},"summary":"方法证据：T087保留两条合法路径及外包络；唯一真实顺序没有得到证明，本次没有运行真实重算。","symbol":null,"time":"时间未记录","type":"METHOD_EVIDENCE","type_label":"方法与边界"},
+{"adoption_status":"NOT_FORMALLY_ADOPTED","attention":true,"attention_text":"存在冲突：T087-SAME-SECOND-UNIQUE-ORDER-NOT-PROVEN；这是方法边界，不是新计算结果","can_prove":"两行分别保存两条合法路径及其既有方法值。","cannot_prove":"旧值只供有界表示测试和方法回归，不作为本次新运行真值。","canonical_record_sha256":"ecfa7137b396381a0b904b72e0efc4fde9901732c8bfd9bd2604be809a55b945","details":[],"evidence":"限定范围证据","execution_status":"NOT_AUTHORIZED","id":"METHOD-7fc8dfcf08ab9b75f76656cb","relation":null,"sequence":3902,"source":{"file":"EQ_P2_RW002_T087_LAWFUL_ORDER_VARIANTS.csv","locator":"selected-object-2","path":"/Users/luodaluo/Desktop/30天复盘原始数据/00_WORK总控/24_账户权益重建专项/02_EQ-P2_固定10笔与全部关键动作节点账户权益计算/03_RW002_T087同秒边界纠偏/EQ_P2_RW002_T087_LAWFUL_ORDER_VARIANTS.csv","row":null,"table":"method"},"summary":"方法证据：T087保留两条合法路径及外包络；唯一真实顺序没有得到证明，本次没有运行真实重算。","symbol":null,"time":"时间未记录","type":"METHOD_EVIDENCE","type_label":"方法与边界"}
+]
+});
