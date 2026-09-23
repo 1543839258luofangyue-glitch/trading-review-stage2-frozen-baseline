@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>T120 一笔做空交易怎样发生｜可视化样本</title>
+  <style>
+    :root{
+      --paper:#fffdfa;--bg:#f2f0e9;--ink:#17211c;--muted:#5c675f;
+      --line:#d9ddd7;--grid:#e9ece8;--position:#126b57;--position-soft:#dceee8;
+      --fill:#0f6d58;--attempt:#66716a;--close:#2359a6;--close-soft:#e7eef9;
+      --condition:#8a5a14;--condition-soft:#fff0cd;--loss:#a02e2e;
+      --shadow:0 18px 55px rgba(43,52,46,.08)
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:17px;line-height:1.6}
+    main{max-width:1280px;margin:auto;padding:16px clamp(16px,3.8vw,56px) 72px}
+    .identity{display:flex;justify-content:space-between;align-items:center;gap:16px;color:var(--muted);font-size:.84rem;margin-bottom:12px}
+    .identity strong{color:var(--ink);font-size:.96rem}.identity span:last-child{text-align:right}
+    .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,.38fr);gap:24px 50px;align-items:end}
+    .eyebrow{margin:0 0 8px;color:var(--position);font-size:.84rem;font-weight:800;letter-spacing:.05em}
+    h1{font-size:clamp(2.1rem,4vw,3.65rem);line-height:1.04;letter-spacing:-.05em;margin:0;max-width:900px}
+    .lead{font-size:clamp(1rem,1.45vw,1.16rem);color:var(--muted);max-width:860px;margin:10px 0 0}
+    .outcome{border-left:5px solid var(--loss);padding:8px 0 8px 18px;margin-bottom:4px}
+    .outcome span{display:block;color:var(--muted);font-size:.82rem}.outcome strong{display:block;color:var(--loss);font-size:clamp(1.75rem,3.2vw,2.7rem);line-height:1.1;font-variant-numeric:tabular-nums}.outcome small{display:block;color:var(--muted);margin-top:5px}
+    .quick-facts{display:grid;grid-template-columns:repeat(5,1fr);margin:16px 0 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .quick-facts div{padding:11px 20px;border-right:1px solid var(--line)}.quick-facts div:first-child{padding-left:0}.quick-facts div:last-child{border-right:0}
+    .quick-facts span{display:block;color:var(--muted);font-size:.78rem}.quick-facts strong{display:block;margin-top:3px;font-size:1rem;font-variant-numeric:tabular-nums}
+    .map-section{background:var(--paper);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:clamp(18px,3vw,34px);overflow:hidden}
+    .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px}.section-head h2{margin:0;font-size:clamp(1.45rem,2.5vw,2.15rem);letter-spacing:-.025em}.section-head p{margin:5px 0 0;color:var(--muted)}
+    .legend{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 17px;color:var(--muted);font-size:.78rem;white-space:nowrap}.legend span{display:inline-flex;align-items:center;gap:7px}.legend b{width:13px;height:13px;display:inline-grid;place-items:center;line-height:1}.legend .fill-dot{border-radius:50%;background:var(--fill)}.legend .attempt-dot{border-radius:50%;border:2px solid var(--attempt);background:#fff}.legend .condition-dot{transform:rotate(45deg);background:var(--condition-soft);border:2px solid var(--condition)}.legend .position-line{height:4px;width:18px;background:var(--position);border-radius:4px}
+    .map-scroll{overflow-x:auto;overscroll-behavior-inline:contain;padding-bottom:3px}.trade-map{display:block;width:100%;height:auto}.mobile-map{max-width:520px;margin:0 auto}.mobile-map,.mobile-copy{display:none}
+    .svg-label{font:700 15px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:var(--ink)}.svg-small{font:500 12px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:var(--muted)}.svg-tiny{font:600 11px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:var(--muted)}.svg-value{font:800 16px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;fill:var(--ink)}
+    .map-caption{display:flex;justify-content:space-between;gap:20px;margin:14px 2px 0;color:var(--muted);font-size:.8rem}.map-caption strong{color:var(--ink)}
+    .story{margin-top:40px}.story h2,.evidence h2{font-size:clamp(1.45rem,2.4vw,2rem);letter-spacing:-.025em;margin:0 0 8px}.story-intro{color:var(--muted);margin:0 0 20px}
+    .fill-steps{display:grid;grid-template-columns:repeat(4,1fr);position:relative;margin:28px 0 36px}.fill-steps::before{content:"";position:absolute;left:11%;right:11%;top:24px;height:3px;background:var(--line)}.fill-step{position:relative;text-align:center;padding:0 12px;z-index:1}.step-no{display:grid;place-items:center;width:48px;height:48px;margin:auto;border-radius:50%;background:var(--fill);color:#fff;font-weight:900;box-shadow:0 0 0 8px var(--bg)}.fill-step:last-child .step-no{background:var(--close)}.fill-step h3{font-size:1rem;margin:15px 0 3px}.fill-step .price{font-weight:800;font-variant-numeric:tabular-nums}.fill-step p{font-size:.83rem;color:var(--muted);line-height:1.45;margin:6px auto 0;max-width:220px}
+    .plain-summary{margin:0 0 38px;padding:22px 25px;border-radius:20px;background:linear-gradient(135deg,var(--position-soft),#edf5f1);font-size:1.05rem}.plain-summary strong{color:var(--position)}
+    .attempt-strip{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:20px;overflow:hidden;background:var(--paper)}.attempt-stage{padding:20px 18px;border-right:1px solid var(--line)}.attempt-stage:last-child{border-right:0}.attempt-stage span{display:block;color:var(--muted);font-size:.78rem;min-height:2.5em}.attempt-stage strong{font-size:1.75rem;line-height:1.1;font-variant-numeric:tabular-nums}.attempt-stage p{font-size:.82rem;color:var(--muted);margin:5px 0 0}
+    .condition-band{display:grid;grid-template-columns:auto 1fr;gap:20px 30px;align-items:center;margin-top:20px;padding:20px 24px;border-radius:20px;background:var(--condition-soft)}.condition-total{width:94px;height:94px;display:grid;place-items:center;text-align:center;border:3px solid var(--condition);border-radius:50%;color:var(--condition)}.condition-total strong{display:block;font-size:2rem;line-height:1}.condition-total span{font-size:.75rem;font-weight:800}.condition-band h3{margin:0 0 5px;font-size:1.07rem}.condition-band p{margin:0;color:#63440f}.condition-breakdown{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:8px;font-size:.85rem;font-weight:700;color:#63440f}
+    .evidence{margin-top:42px}.known-unknown{display:grid;grid-template-columns:1fr 1fr;gap:18px}.known,.unknown{border-radius:22px;padding:22px 24px}.known{background:var(--position-soft)}.unknown{background:var(--condition-soft)}.known h3,.unknown h3{margin:0 0 9px;font-size:1.08rem}.known ul,.unknown ul{margin:0;padding-left:1.2em}.known li,.unknown li{margin:5px 0}
+    details{margin-top:20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 0;color:var(--muted);font-size:.88rem}summary{cursor:pointer;color:var(--ink);font-weight:800}details p{max-width:950px}.status-note{margin-top:22px;color:var(--muted);font-size:.82rem}footer{margin-top:38px;color:var(--muted);font-size:.8rem}
+    @media(max-width:1050px){
+      main{padding-top:17px}.identity span:last-child{display:none}.hero{grid-template-columns:1fr}.outcome{margin-top:0}.quick-facts{grid-template-columns:1fr 1fr}.quick-facts div{border-bottom:1px solid var(--line)}.quick-facts div:nth-child(even){border-right:0}.quick-facts div:last-child{grid-column:1/-1;border-right:0;border-bottom:0;padding-left:0}.section-head{align-items:flex-start;flex-direction:column}.legend{justify-content:flex-start}.desktop-map,.desktop-copy{display:none}.mobile-map,.mobile-copy{display:block}.fill-steps{grid-template-columns:1fr 1fr;gap:30px 8px}.fill-steps::before{display:none}.attempt-strip{grid-template-columns:1fr 1fr}.attempt-stage:nth-child(2){border-right:0}.attempt-stage:nth-child(1),.attempt-stage:nth-child(2){border-bottom:1px solid var(--line)}.known-unknown{grid-template-columns:1fr}
+    }
+    @media(max-width:520px){
+      h1{font-size:2.12rem}.lead{line-height:1.5}.quick-facts strong{font-size:.9rem}.quick-facts div{padding-top:10px;padding-bottom:10px}.map-section{border-radius:20px;padding:17px 13px}.fill-steps{grid-template-columns:1fr}.fill-step{text-align:left;display:grid;grid-template-columns:48px 1fr;column-gap:14px}.fill-step .step-no{grid-row:1/4;margin:0;box-shadow:none}.fill-step h3{margin:2px 0 0}.fill-step p{margin:4px 0 0;max-width:none}.attempt-strip{grid-template-columns:1fr}.attempt-stage{border-right:0;border-bottom:1px solid var(--line)!important}.attempt-stage:last-child{border-bottom:0!important}.condition-band{grid-template-columns:1fr}.condition-total{width:82px;height:82px}.map-caption{display:block}.map-caption span{display:block;margin-top:4px}
+    }
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{body{background:#fff}.map-section{box-shadow:none}main{max-width:none}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="identity"><strong>一笔交易 · 一个页面 · 先看懂，再核对</strong><span>历史样本，不是已经采用的 136 笔正式交易链</span></div>
+    <header class="hero">
+      <div><p class="eyebrow">T120 · BTCUSDT · 做空</p><h1>先卖出，分两次加仓，最后全部买回。</h1><p class="lead">真正改变仓位的只有 4 次成交。其他挂单尝试、止盈和止损单都放在同一条交易主线上，但不会假装成已经成交。</p></div>
+      <div class="outcome" aria-label="历史资料记载净结果约亏损五百七十九点八一 USDT"><span>历史资料记载的结果</span><strong>−579.81</strong><small>USDT · 本页没有重新计算</small></div>
+    </header>
+    <section class="quick-facts" aria-label="这笔交易的五项基本信息">
+      <div><span>正式开仓</span><strong>6 月 17 日 21:37:46</strong></div><div><span>全部平仓</span><strong>6 月 18 日 02:00:24</strong></div><div><span>持仓时间</span><strong>4 小时 22 分 38 秒</strong></div><div><span>做空仓位最高</span><strong>10.026 BTC</strong></div><div><span>最后状态</span><strong>仓位回到 0</strong></div>
+    </section>
+
+    <section class="map-section" aria-labelledby="map-title">
+      <div class="section-head"><div><h2 id="map-title">一张图看懂这笔交易怎样发生</h2><p><span class="desktop-copy">从左往右看；粗线越高，做空仓位越大。</span><span class="mobile-copy">从上往下看；粗线离左边越远，做空仓位越大。</span></p></div><div class="legend" aria-label="图例"><span><b class="fill-dot" aria-hidden="true"></b>实际成交</span><span><b class="attempt-dot" aria-hidden="true"></b>没成交</span><span><b class="position-line" aria-hidden="true"></b>做空仓位</span><span><b class="condition-dot" aria-hidden="true"></b>止盈止损</span></div></div>
+      <div class="map-scroll" aria-label="交易主图">
+        <svg class="trade-map desktop-map" viewBox="0 0 1180 650" role="img" aria-labelledby="svg-title svg-desc">
+          <title id="svg-title">T120 做空交易从挂单尝试、四次实际成交到仓位归零的完整示意图</title>
+          <desc id="svg-desc">开仓前十一张订单没有成交。随后卖出五 BTC，仓位变为五。六张加仓单没有成交。之后一张卖五 BTC 的订单只成交一点二二六，仓位变为六点二二六，余下取消。再有一张加仓单未成交。随后卖出三点八 BTC，仓位达到十点零二六。之后两张加仓和三张减仓或平仓订单均未成交。最后买回十点零二六 BTC，仓位归零。十张止盈止损条件单均未形成实际成交。</desc>
+          <rect x="18" y="44" width="230" height="540" rx="22" fill="#f4f5f3" stroke="#cfd5d0" stroke-dasharray="7 7"/><text x="38" y="72" class="svg-label">正式开仓以前</text><text x="38" y="92" class="svg-small">这段时间压缩显示</text>
+          <text x="38" y="135" class="svg-small">挂单尝试</text><rect x="55" y="151" width="150" height="58" rx="17" fill="#fff" stroke="#66716a" stroke-width="2"/><circle cx="78" cy="180" r="9" fill="#fff" stroke="#66716a" stroke-width="3"/><text x="96" y="176" class="svg-value">11 张</text><text x="96" y="194" class="svg-tiny">都没成交，后取消</text>
+          <line x1="280" y1="114" x2="280" y2="520" stroke="#d5dad6" stroke-dasharray="5 6"/><line x1="668" y1="114" x2="668" y2="520" stroke="#d5dad6" stroke-dasharray="5 6"/><line x1="704" y1="114" x2="704" y2="520" stroke="#d5dad6" stroke-dasharray="5 6"/><line x1="1100" y1="114" x2="1100" y2="520" stroke="#d5dad6" stroke-dasharray="5 6"/>
+          <text x="280" y="98" class="svg-small" text-anchor="middle">开仓</text><text x="668" y="98" class="svg-small" text-anchor="middle">部分成交</text><text x="722" y="98" class="svg-small">再次加仓</text><text x="1100" y="98" class="svg-small" text-anchor="middle">全部平仓</text>
+          <text x="267" y="135" class="svg-small" text-anchor="end">实际成交</text>
+          <circle cx="280" cy="180" r="18" fill="#0f6d58"/><path d="M271 180l6 6 12-14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="302" y="148" width="132" height="63" rx="15" fill="#dceee8"/><text x="318" y="173" class="svg-label">卖出 5</text><text x="318" y="194" class="svg-tiny">全成交 · 均价 65,211</text>
+          <rect x="443" y="122" width="140" height="53" rx="15" fill="#fff" stroke="#66716a" stroke-width="2"/><circle cx="464" cy="149" r="8" fill="#fff" stroke="#66716a" stroke-width="3"/><text x="481" y="146" class="svg-label">6 张加仓单</text><text x="481" y="162" class="svg-tiny">都没成交</text>
+          <circle cx="668" cy="180" r="18" fill="#0f6d58"/><path d="M659 180l6 6 12-14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="525" y="202" width="170" height="68" rx="15" fill="#dceee8"/><text x="540" y="226" class="svg-label">只成交 1.226</text><text x="540" y="246" class="svg-tiny">挂 5 · 余下 3.774 取消</text><text x="540" y="261" class="svg-tiny">成交均价 65,487</text>
+          <rect x="573" y="30" width="220" height="54" rx="14" fill="#fff" stroke="#66716a" stroke-width="2"/><text x="590" y="52" class="svg-label">两次成交之间：1 张加仓单</text><text x="590" y="71" class="svg-tiny">没成交，后来取消</text><line x1="686" y1="84" x2="686" y2="124" stroke="#66716a" stroke-width="2"/><circle cx="686" cy="135" r="8" fill="#fff" stroke="#66716a" stroke-width="3"/>
+          <circle cx="704" cy="180" r="18" fill="#0f6d58"/><path d="M695 180l6 6 12-14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="728" y="149" width="143" height="62" rx="15" fill="#dceee8"/><text x="744" y="174" class="svg-label">卖出 3.8</text><text x="744" y="195" class="svg-tiny">全成交 · 均价 65,721</text>
+          <rect x="833" y="111" width="176" height="66" rx="15" fill="#fff" stroke="#66716a" stroke-width="2"/><circle cx="856" cy="143" r="8" fill="#fff" stroke="#66716a" stroke-width="3"/><text x="874" y="135" class="svg-label">之后 5 张没成交</text><text x="874" y="155" class="svg-tiny">2 张加仓 + 3 张减仓/平仓</text>
+          <circle cx="1100" cy="180" r="18" fill="#2359a6"/><path d="M1091 180l6 6 12-14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="943" y="202" width="156" height="63" rx="15" fill="#e7eef9"/><text x="958" y="227" class="svg-label">买回 10.026</text><text x="958" y="248" class="svg-tiny">全成交 · 限价 65,468</text>
+          <text x="38" y="312" class="svg-small">做空仓位</text><line x1="255" y1="430" x2="1122" y2="430" stroke="#d9ddd7" stroke-width="1.5"/><line x1="255" y1="350" x2="1122" y2="350" stroke="#e9ece8"/><line x1="255" y1="330" x2="1122" y2="330" stroke="#e9ece8"/><line x1="255" y1="270" x2="1122" y2="270" stroke="#e9ece8"/><text x="243" y="434" class="svg-tiny" text-anchor="end">0</text><text x="243" y="354" class="svg-tiny" text-anchor="end">5</text><text x="243" y="334" class="svg-tiny" text-anchor="end">6.226</text><text x="243" y="274" class="svg-tiny" text-anchor="end">10.026 BTC</text>
+          <path d="M250 430 H280 V350 H668 V330 H704 V270 H1100 V430 H1125" fill="none" stroke="#126b57" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="280" cy="350" r="9" fill="#fff" stroke="#126b57" stroke-width="5"/><circle cx="668" cy="330" r="9" fill="#fff" stroke="#126b57" stroke-width="5"/><circle cx="704" cy="270" r="9" fill="#fff" stroke="#126b57" stroke-width="5"/><circle cx="1100" cy="430" r="9" fill="#fff" stroke="#2359a6" stroke-width="5"/>
+          <rect x="345" y="365" width="135" height="42" rx="13" fill="#fff" stroke="#d9ddd7"/><text x="412" y="383" class="svg-value" text-anchor="middle">5 BTC</text><text x="412" y="399" class="svg-tiny" text-anchor="middle">第一段持仓</text><rect x="560" y="282" width="120" height="42" rx="13" fill="#fff" stroke="#d9ddd7"/><text x="620" y="300" class="svg-value" text-anchor="middle">6.226</text><text x="620" y="316" class="svg-tiny" text-anchor="middle">部分加仓后</text><rect x="793" y="282" width="130" height="42" rx="13" fill="#fff" stroke="#d9ddd7"/><text x="858" y="300" class="svg-value" text-anchor="middle">10.026</text><text x="858" y="316" class="svg-tiny" text-anchor="middle">本笔最高仓位</text>
+          <text x="38" y="504" class="svg-small">止盈止损</text><rect x="280" y="486" width="820" height="74" rx="18" fill="#fff0cd" stroke="#8a5a14" stroke-width="1.5"/><rect x="305" y="505" width="34" height="34" rx="7" fill="#fff8e8" stroke="#8a5a14" stroke-width="2" transform="rotate(45 322 522)"/><text x="361" y="517" class="svg-label">10 张条件单：没有一张形成实际成交</text><text x="361" y="540" class="svg-small">止损 7 张（6 取消、1 过期） · 止盈 3 张（全部取消）</text><line x1="1000" y1="522" x2="1060" y2="522" stroke="#8a5a14" stroke-dasharray="6 6" stroke-width="2"/><text x="1074" y="518" class="svg-tiny">没有证据可接到</text><text x="1074" y="535" class="svg-tiny">最后平仓成交</text>
+          <line x1="280" y1="583" x2="1100" y2="583" stroke="#9ca69f" stroke-width="2"/><line x1="280" y1="575" x2="280" y2="591" stroke="#9ca69f" stroke-width="2"/><line x1="668" y1="575" x2="668" y2="591" stroke="#9ca69f" stroke-width="2"/><line x1="704" y1="575" x2="704" y2="591" stroke="#9ca69f" stroke-width="2"/><line x1="1100" y1="575" x2="1100" y2="591" stroke="#9ca69f" stroke-width="2"/><text x="280" y="610" class="svg-tiny" text-anchor="middle">6/17 21:37:46</text><text x="668" y="610" class="svg-tiny" text-anchor="middle">23:38:35*</text><text x="704" y="630" class="svg-tiny" text-anchor="middle">23:50:03*</text><text x="1100" y="610" class="svg-tiny" text-anchor="middle">6/18 02:00:24</text>
+        </svg>
+
+        <svg class="trade-map mobile-map" viewBox="0 0 390 920" role="img" aria-labelledby="mobile-svg-title mobile-svg-desc">
+          <title id="mobile-svg-title">手机上查看的 T120 做空交易仓位路径</title><desc id="mobile-svg-desc">仓位从零开始，经过三次卖出变为五、六点二二六和十点零二六，最后全部买回归零；未成交委托和条件单没有改变仓位。</desc>
+          <rect x="14" y="20" width="362" height="82" rx="18" fill="#f4f5f3" stroke="#9da69f" stroke-dasharray="6 6"/><text x="34" y="50" class="svg-label">开仓前：11 张开仓单没成交</text><text x="34" y="75" class="svg-small">全部取消，仓位仍是 0</text>
+          <line x1="70" y1="125" x2="70" y2="785" stroke="#cbd1cc" stroke-width="3"/>
+          <path d="M70 145 H160 V315 H182 V470 H250 V645 H70 V785" fill="none" stroke="#126b57" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="160" cy="145" r="14" fill="#0f6d58"/><text x="184" y="139" class="svg-label">卖出 5，仓位 0 → 5</text><text x="184" y="160" class="svg-small">21:37:46 · 均价 65,211</text>
+          <rect x="171" y="190" width="188" height="57" rx="14" fill="#fff" stroke="#66716a"/><circle cx="192" cy="218" r="7" fill="#fff" stroke="#66716a" stroke-width="3"/><text x="209" y="213" class="svg-label">6 张加仓单没成交</text><text x="209" y="231" class="svg-tiny">仓位保持 5</text>
+          <circle cx="182" cy="315" r="14" fill="#0f6d58"/><text x="206" y="303" class="svg-label">只成交 1.226</text><text x="206" y="324" class="svg-small">挂 5，余下 3.774 取消</text><text x="206" y="343" class="svg-small">仓位 5 → 6.226</text>
+          <rect x="193" y="372" width="163" height="53" rx="14" fill="#fff" stroke="#66716a"/><circle cx="214" cy="398" r="7" fill="#fff" stroke="#66716a" stroke-width="3"/><text x="231" y="394" class="svg-label">1 张加仓没成交</text><text x="231" y="412" class="svg-tiny">仓位保持 6.226</text>
+          <circle cx="250" cy="470" r="14" fill="#0f6d58"/><text x="274" y="458" class="svg-label">卖出 3.8</text><text x="274" y="479" class="svg-small">仓位 6.226 → 10.026</text><text x="274" y="498" class="svg-small">均价 65,721</text>
+          <rect x="138" y="535" width="220" height="59" rx="14" fill="#fff" stroke="#66716a"/><circle cx="159" cy="564" r="7" fill="#fff" stroke="#66716a" stroke-width="3"/><text x="176" y="559" class="svg-label">之后 5 张没成交</text><text x="176" y="578" class="svg-tiny">2 加仓 + 3 减仓/平仓</text>
+          <circle cx="70" cy="645" r="14" fill="#2359a6"/><text x="94" y="609" class="svg-label">买回 10.026，仓位归零</text><text x="94" y="630" class="svg-small">02:00:24 · 平仓限价 65,468</text>
+          <rect x="14" y="715" width="362" height="85" rx="18" fill="#fff0cd" stroke="#8a5a14"/><text x="34" y="745" class="svg-label">10 张止盈止损单：0 张形成成交</text><text x="34" y="769" class="svg-small">9 张取消，1 张过期；没有接到平仓线上</text>
+          <rect x="14" y="824" width="362" height="72" rx="18" fill="#dceee8"/><text x="34" y="853" class="svg-label">仓位路径</text><text x="34" y="880" class="svg-value">0 → 5 → 6.226 → 10.026 → 0</text>
+        </svg>
+      </div>
+      <div class="map-caption"><span><strong>读图方法：</strong>实心圆是实际成交；空心圆只是尝试；仓位只会在实际成交处升降。</span><span>* 中间两个时间是委托结束时间，不冒充精确成交时刻。</span></div>
+    </section>
+
+    <section class="story" aria-labelledby="fills-title">
+      <h2 id="fills-title">真正改变仓位的 4 次成交</h2><p class="story-intro">只看下面四步，就能复述这笔交易。卖出让做空仓位增加；最后买回是平仓，不是开多。</p>
+      <div class="fill-steps">
+        <article class="fill-step"><span class="step-no">1</span><div><h3>卖出 5 BTC</h3><div class="price">成交均价 65,211</div><p>正式开仓 21:37:46<br>全部成交，做空仓位 0 → 5</p></div></article>
+        <article class="fill-step"><span class="step-no">2</span><div><h3>只卖出 1.226 BTC</h3><div class="price">成交均价 65,487</div><p>委托结束 23:38:35*<br>原挂 5；余下 3.774 取消，仓位 5 → 6.226</p></div></article>
+        <article class="fill-step"><span class="step-no">3</span><div><h3>卖出 3.8 BTC</h3><div class="price">成交均价 65,721</div><p>委托结束 23:50:03*<br>全部成交，仓位 6.226 → 10.026</p></div></article>
+        <article class="fill-step"><span class="step-no">4</span><div><h3>买回 10.026 BTC</h3><div class="price">平仓限价 65,468</div><p>正式平仓 02:00:24<br>全部成交，做空仓位 10.026 → 0</p></div></article>
+      </div>
+      <p class="plain-summary"><strong>一句话：</strong>开仓卖出 5 BTC，后来实际再卖出 1.226 和 3.8 BTC，最后把累计的 10.026 BTC 全部买回；这笔做空就此结束。</p>
+      <h2>没有成交的尝试，单独放在这里</h2><p class="story-intro">这些委托能说明“尝试过什么”，但不能算作已经持有的仓位。</p>
+      <div class="attempt-strip" aria-label="四个阶段的未成交委托"><div class="attempt-stage"><span>第一次成交以前</span><strong>11 张</strong><p>开仓尝试，均未成交</p></div><div class="attempt-stage"><span>5 BTC 持仓期间</span><strong>6 张</strong><p>加仓尝试，均未成交</p></div><div class="attempt-stage"><span>6.226 BTC 持仓期间</span><strong>1 张</strong><p>加仓尝试，未成交</p></div><div class="attempt-stage"><span>10.026 BTC 持仓期间</span><strong>5 张</strong><p>2 张加仓 + 3 张减仓或平仓，均未成交</p></div></div>
+      <div class="condition-band" aria-label="条件委托结果"><div class="condition-total"><div><strong>10</strong><span>张条件单</span></div></div><div><h3>止盈、止损单没有形成实际成交</h3><p>资料记录了 7 张止损和 3 张止盈；最后结果是 9 张取消、1 张过期、0 张形成成交。</p><div class="condition-breakdown"><span>止损：6 取消 + 1 过期</span><span>止盈：3 取消</span><span>实际触发成交：0</span></div></div></div>
+    </section>
+
+    <section class="evidence" aria-labelledby="boundary-title">
+      <h2 id="boundary-title">这页能证明什么，不能证明什么</h2><p class="story-intro">不知道的地方直接保留，不用猜测把故事补完整。</p>
+      <div class="known-unknown"><div class="known"><h3>✓ 目前能确认</h3><ul><li>4 次成交怎样把做空仓位从 0 变到 10.026，再回到 0。</li><li>部分成交只增加 1.226 BTC，没成交的 3.774 BTC 没有算进仓位。</li><li>23 张完全未成交的基础委托没有改变仓位。</li><li>10 张条件单没有形成实际成交。</li><li>历史资料记载本周期净结果约亏 579.81 USDT。</li></ul></div><div class="unknown"><h3>？ 这页不会替资料猜</h3><ul><li>两次中间加仓的精确成交时刻；页面只标委托结束时间。</li><li>每张未成交委托为什么取消。</li><li>最后买回是否由某一张止盈、止损单触发；现有记录不能这样连接。</li><li>历史资料有盈亏、手续费和资金费的拆分数字，但本页没有重新核算这些数字是否正确。</li></ul></div></div>
+      <details><summary>查看亏损构成、资料来源和页面身份</summary><p>历史母版记载：已实现盈亏 −300.30600009 USDT，手续费 −262.49280595 USDT，资金费 −17.01164938 USDT，合计 −579.81045542 USDT。本页只忠实展示历史记载，没有重新计算。</p><p>本页使用 V2.1 十笔历史母版中 T120 的“技术_完整操作链”（第 150—187 行）、“技术_逐笔复盘汇总”（第 9 行）、“技术_条件委托演变”（第 48—57 行）等相关记录。正式开仓、平仓时间来自汇总；中间两笔加仓只使用母版节点和相应委托结束时间，因此没有冒充精确成交时间。</p><p>页面是独立的可视化样本，只用于检查用户能否看懂一笔交易怎样发生；它不是已经采用的 136 笔客观交易链，也没有修改正式项目资料。</p></details>
+      <p class="status-note">如果第一张主图仍不能让人直接说出“何时真正成交、仓位怎样变化、哪些只是尝试”，就说明页面还没有通过，而不是用户没有看懂。</p>
+    </section>
+    <footer>独立离线样本 · 2026-09-23 重做版 · 一页先理解、再核对、最后追溯资料</footer>
+  </main>
+</body>
+</html>
