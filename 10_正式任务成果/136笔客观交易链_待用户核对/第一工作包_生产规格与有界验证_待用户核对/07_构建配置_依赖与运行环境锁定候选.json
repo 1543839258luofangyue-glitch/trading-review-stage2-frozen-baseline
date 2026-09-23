@@ -23,6 +23,7 @@
     "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_04_T093_0002.js",
     "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_05_T112_0001.js",
     "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_06_T120_0001.js",
+    "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_06_T120_0002.js",
     "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_07_SHARED_ACCOUNT_EFFECT_0001.js",
     "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_08_UNASSIGNED_COND_0218_0001.js",
     "10_正式任务成果/136笔客观交易链_待用户核对/第一工作包_生产规格与有界验证_待用户核对/12_用户核对可视化测试版候选_数据_09_U016_0001.js",
@@ -365,9 +366,9 @@
       "sha256": "1d6c0ea414446a6224a05086bc83d1e1e0286b1056d2eeba5041ccefad9997ec"
     },
     "candidate_program": {
-      "bytes": 464871,
+      "bytes": 638709,
       "path": "06_构建与确定性装载程序候选.py",
-      "sha256": "c0b78a5071f0b6d95071263e114af23fa3eacb641b74fc1e415e701ca38bdd80"
+      "sha256": "b96342d052052b28f8d1edcd162e07c2409f7d00ffe0aaed6a2e10b89a16b66c"
     },
     "input_receipts": {
       "bytes": 177415,
@@ -380,9 +381,9 @@
       "sha256": "df70e09eb953c1bea804077872c24d8d43f36e7982cc354bb6d294e639dcbee9"
     },
     "program_tests": {
-      "bytes": 74395,
+      "bytes": 82287,
       "path": "08_最小程序测试与预期结果候选.jsonl",
-      "sha256": "69f8203e67eba5f89d4bf7c418e794ccf4b5ca51635c834f4aff5d95925e178c"
+      "sha256": "e341a72009a2285351b5a6a082a347017d1ca42a4285d83cd5bf2b673b690edb"
     },
     "recomputation_contract": {
       "bytes": 33015,
@@ -445,6 +446,7 @@
       "12_用户核对可视化测试版候选_数据_04_T093_0002.js",
       "12_用户核对可视化测试版候选_数据_05_T112_0001.js",
       "12_用户核对可视化测试版候选_数据_06_T120_0001.js",
+      "12_用户核对可视化测试版候选_数据_06_T120_0002.js",
       "12_用户核对可视化测试版候选_数据_07_SHARED_ACCOUNT_EFFECT_0001.js",
       "12_用户核对可视化测试版候选_数据_08_UNASSIGNED_COND_0218_0001.js",
       "12_用户核对可视化测试版候选_数据_09_U016_0001.js",
@@ -458,9 +460,10 @@
       {"path":"03_字段关系组装与能力闭合表候选.jsonl","destination_name":"03_字段关系组装与能力闭合表候选.jsonl","bytes":6330038,"sha256":"1d6c0ea414446a6224a05086bc83d1e1e0286b1056d2eeba5041ccefad9997ec"},
       {"path":"04_数据结构与规范化规则候选.json","destination_name":"04_数据结构与规范化规则候选.json","bytes":9172,"sha256":"df70e09eb953c1bea804077872c24d8d43f36e7982cc354bb6d294e639dcbee9"},
       {"path":"05_三项重新计算前置合同与依赖候选.json","destination_name":"05_三项重新计算前置合同与依赖候选.json","bytes":33015,"sha256":"7854b3dd634d1a501f11b5ad098455c7dea59c9410017f09ceabafc678afc0f7"},
-      {"path":"06_构建与确定性装载程序候选.py","destination_name":"06_构建与确定性装载程序候选.py","bytes":464871,"sha256":"c0b78a5071f0b6d95071263e114af23fa3eacb641b74fc1e415e701ca38bdd80"},
-      {"path":"08_最小程序测试与预期结果候选.jsonl","destination_name":"08_最小程序测试与预期结果候选.jsonl","bytes":74395,"sha256":"69f8203e67eba5f89d4bf7c418e794ccf4b5ca51635c834f4aff5d95925e178c"},
+      {"path":"06_构建与确定性装载程序候选.py","destination_name":"06_构建与确定性装载程序候选.py","bytes":638709,"sha256":"b96342d052052b28f8d1edcd162e07c2409f7d00ffe0aaed6a2e10b89a16b66c"},
+      {"path":"08_最小程序测试与预期结果候选.jsonl","destination_name":"08_最小程序测试与预期结果候选.jsonl","bytes":82287,"sha256":"e341a72009a2285351b5a6a082a347017d1ca42a4285d83cd5bf2b673b690edb"},
       {"path":"09_有界验证样本清单候选.json","destination_name":"09_有界验证样本清单候选.json","bytes":413811,"sha256":"9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"},
+      {"path":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md","destination_name":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md","bytes":23377,"sha256":"1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"},
       {"path":"../../客观交易链正式构成与构建输入联合裁定_待用户核对/阶段三_PRE与POST_客观交易链正式构成与构建输入最终交叉裁定_待用户核对/阶段三_机器总账.jsonl","destination_name":"阶段三_机器总账.jsonl","bytes":1904700,"sha256":"d41694adfe54a0ba1a29d8ab66d991b31bc98635ccb295965eda8e5d5a4dcafa"}
     ],
     "commands": {
@@ -527,8 +530,14 @@
       "data_index_file": "12_用户核对可视化测试版候选_数据索引.js",
       "chunk_file_prefix": "12_用户核对可视化测试版候选_数据_",
       "maximum_entry_html_bytes": 131072,
-      "maximum_index_bytes": 131072,
+    "maximum_index_bytes": 327680,
       "maximum_chunk_bytes": 524288,
+      "common_basis": {
+        "file": "16_单笔客观交易链可视化完整性共同依据_用户确认版.md",
+        "bytes": 23377,
+        "sha256": "1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"
+      },
+      "quality_receipt_file": "13_自动质量检查与内容指纹候选.json",
       "expected_data_asset_files": [
         "12_用户核对可视化测试版候选_数据索引.js",
         "12_用户核对可视化测试版候选_数据_01_T020_0001.js",
@@ -544,6 +553,7 @@
         "12_用户核对可视化测试版候选_数据_04_T093_0002.js",
         "12_用户核对可视化测试版候选_数据_05_T112_0001.js",
         "12_用户核对可视化测试版候选_数据_06_T120_0001.js",
+        "12_用户核对可视化测试版候选_数据_06_T120_0002.js",
         "12_用户核对可视化测试版候选_数据_07_SHARED_ACCOUNT_EFFECT_0001.js",
         "12_用户核对可视化测试版候选_数据_08_UNASSIGNED_COND_0218_0001.js",
         "12_用户核对可视化测试版候选_数据_09_U016_0001.js",
@@ -556,15 +566,30 @@
       "default_object_id": "T120",
       "page_size": 25,
       "required_sections": [
-        "交易过程",
-        "关系连接",
-        "未知与冲突",
-        "来源依据"
+        "先把这页的身份、单位和时间说清",
+        "第一眼先看仓位怎么变化",
+        "id=\"stepsHeading\"",
+        "止盈止损发生了什么",
+        "这笔交易的钱，目前能核对到哪里",
+        "还有哪些内容没有在本页算清",
+        "这页有没有漏掉当前样本资料"
       ],
       "responsive_widths": [1440, 390, 320],
       "record_coverage": "EXACTLY_ONCE_ACROSS_DETERMINISTIC_LOCAL_DATA_SHARDS",
       "source_of_truth": "10_有界测试事实底座候选.jsonl",
-      "raw_value_policy": "完整raw_value只留在唯一事实底座；可视化页保留fact_id、来源定位、白话摘要和必要的核对字段。",
+      "raw_value_policy": "完整raw_value仍以唯一事实底座为准；T120底层证据目录额外携带只读原始值、规范值、单位和时间口径，供用户逐项追溯，不形成第二套事实。",
+      "trade_story": {
+        "schema": "OBJECTIVE_TRADE_STORY_V1",
+        "object_id": "T120",
+        "fixed_record_count": 172,
+        "position_path": ["0", "5", "6.226", "10.026", "0"],
+        "business_assembly_owner": "PYTHON_GENERATOR_DECIMAL_AND_RELATION_VALIDATED",
+        "browser_role": "RENDER_VALIDATED_STORY_ONLY",
+        "candidate_status": "NOT_FORMALLY_ADOPTED",
+        "formal_net_result_status": "UNKNOWN_NOT_COMPUTED",
+        "mixed_time_bases_must_not_form_absolute_timeline": true,
+        "condition_relations_must_remain_candidate": true
+      },
       "user_understandability": {
         "current_status": "WAITING_FOR_USER_ACTUAL_REVIEW",
         "pass_condition": "只有用户实际打开并确认能够理解，才能记为通过。",

@@ -1,7 +1,7 @@
 window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
 window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
 "file":"12_用户核对可视化测试版候选_数据_11_T087_METHOD_0001.js",
-"global_index":18,
+"global_index":19,
 "object_position":11,
 "object_id":"T087_METHOD",
 "chunk_index":1,

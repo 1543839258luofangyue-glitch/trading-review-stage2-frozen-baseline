@@ -1,7 +1,7 @@
 window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
 window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
 "file":"12_用户核对可视化测试版候选_数据_10_CROSS_OBJECT_RELATIONS_0001.js",
-"global_index":17,
+"global_index":18,
 "object_position":10,
 "object_id":"CROSS_OBJECT_RELATIONS",
 "chunk_index":1,

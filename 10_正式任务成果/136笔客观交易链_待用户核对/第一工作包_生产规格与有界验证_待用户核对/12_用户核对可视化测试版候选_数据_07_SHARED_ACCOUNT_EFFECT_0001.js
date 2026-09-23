@@ -1,7 +1,7 @@
 window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
 window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
 "file":"12_用户核对可视化测试版候选_数据_07_SHARED_ACCOUNT_EFFECT_0001.js",
-"global_index":14,
+"global_index":15,
 "object_position":7,
 "object_id":"SHARED_ACCOUNT_EFFECT",
 "chunk_index":1,

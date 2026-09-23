@@ -1,7 +1,7 @@
 window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
 window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
 "file":"12_用户核对可视化测试版候选_数据_09_U016_0001.js",
-"global_index":16,
+"global_index":17,
 "object_position":9,
 "object_id":"U016",
 "chunk_index":1,

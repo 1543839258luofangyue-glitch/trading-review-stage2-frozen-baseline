@@ -1,7 +1,7 @@
 window.__TRADING_REVIEW_VISUAL_CHUNKS__=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
 window.__TRADING_REVIEW_VISUAL_CHUNKS__.push({
 "file":"12_用户核对可视化测试版候选_数据_08_UNASSIGNED_COND_0218_0001.js",
-"global_index":15,
+"global_index":16,
 "object_position":8,
 "object_id":"UNASSIGNED:COND-0218",
 "chunk_index":1,

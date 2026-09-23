@@ -3226,6 +3226,154 @@ def validate_trade_object_package_schema(schema):
         'ai_causal_analysis_allowed':False,
     }
 
+def validate_lineage_bindings(records,object_id=None):
+    scoped=[record for record in records if object_id is None or record.get('navigation_object_id')==object_id]
+    facts=[record for record in scoped if record.get('record_type')=='FACT_STATEMENT' and record.get('source_event_id')]
+    lineages=[record for record in scoped if record.get('record_type')=='LINEAGE_STATEMENT']
+    facts_by_event=defaultdict(list)
+    for fact in facts: facts_by_event[fact['source_event_id']].append(fact)
+    if any(len(matches)!=1 for matches in facts_by_event.values()):
+        raise RuntimeError('FACT_BASE_FACT_EVENT_ID_NOT_UNIQUE')
+    lineage_counts=Counter()
+    lineages_by_event=defaultdict(list)
+    for lineage in lineages:
+        value=lineage.get('normalized_value') or {}; raw=lineage.get('raw_value') or {}
+        if canonical(value)!=canonical(raw):
+            raise RuntimeError('FACT_BASE_LINEAGE_RAW_NORMALIZED_DIVERGENCE:'+lineage['fact_id'])
+        event_id=lineage.get('source_event_id')
+        if not event_id or event_id!=value.get('event_id') or event_id!=raw.get('event_id'):
+            raise RuntimeError('FACT_BASE_LINEAGE_EVENT_ID_MISMATCH:'+lineage['fact_id'])
+        matches=facts_by_event.get(event_id) or []
+        if len(matches)!=1:
+            raise RuntimeError('FACT_BASE_LINEAGE_EVENT_NOT_EXACTLY_ONE_FACT:'+lineage['fact_id'])
+        fact=matches[0]
+        if lineage.get('navigation_object_id')!=fact.get('navigation_object_id'):
+            raise RuntimeError('FACT_BASE_LINEAGE_NAVIGATION_OBJECT_MISMATCH:'+lineage['fact_id'])
+        fact_value=fact.get('normalized_value') or {}
+        expected_event_type=(
+            'FILL' if fact_value.get('fill_id')
+            else 'CONDITIONAL_ORDER_LIFECYCLE' if fact_value.get('condition_record_id')
+            else 'POSITION_ACTION' if fact_value.get('position_action_id')
+            else 'ORDER' if fact_value.get('order_id') and fact_value.get('order_created_at')
+            else None
+        )
+        if expected_event_type and value.get('event_type')!=expected_event_type:
+            raise RuntimeError('FACT_BASE_LINEAGE_EVENT_TYPE_FACT_MISMATCH:'+lineage['fact_id'])
+        source_identity=lineage.get('source_identity') or {}
+        if (
+            lineage.get('source_path')!=source_identity.get('source_path')
+            or lineage.get('source_sha256')!=source_identity.get('source_sha256')
+            or lineage.get('source_sha256')!=source_identity.get('selected_content_sha256')
+            or str(source_identity.get('source_locator'))!='data-row-'+str(lineage.get('source_row'))
+        ):
+            raise RuntimeError('FACT_BASE_LINEAGE_CONTAINER_SOURCE_IDENTITY_MISMATCH:'+lineage['fact_id'])
+        for field in ('event_id','source_path','source_sha256','source_row','source_sheet'):
+            if str(value.get(field) or '')!=str(raw.get(field) or ''):
+                raise RuntimeError('FACT_BASE_LINEAGE_VALUE_NOT_PRESERVED:'+lineage['fact_id']+':'+field)
+        lineage_counts[event_id]+=1
+        lineages_by_event[event_id].append(lineage)
+    missing=[event_id for event_id in facts_by_event if lineage_counts[event_id]<1]
+    if missing: raise RuntimeError('FACT_BASE_FACT_WITHOUT_LINEAGE:'+missing[0])
+    for event_id,event_lineages in lineages_by_event.items():
+        signatures=[tuple((item.get('normalized_value') or {}).get(field) for field in ('source_path','source_sha256','source_row','source_sheet','source_role')) for item in event_lineages]
+        lineage_ids=[(item.get('normalized_value') or {}).get('lineage_id') for item in event_lineages]
+        if len(signatures)!=len(set(signatures)) or len(lineage_ids)!=len(set(lineage_ids)):
+            raise RuntimeError('FACT_BASE_LINEAGE_DUPLICATE_WITHIN_EVENT:'+event_id)
+    for event_id,matches in facts_by_event.items():
+        fact_value=matches[0].get('normalized_value') or {}
+        identity_fields=('source_path','source_sha256','source_row','source_sheet')
+        if all(fact_value.get(field) not in (None,'') for field in identity_fields):
+            direct_matches=[
+                item for item in lineages_by_event[event_id]
+                if all(str((item.get('normalized_value') or {}).get(field) or '')==str(fact_value.get(field) or '') for field in identity_fields)
+            ]
+            if len(direct_matches)!=1:
+                raise RuntimeError('FACT_BASE_FACT_SOURCE_NOT_EXACTLY_ONE_LINEAGE:'+event_id)
+    return {
+        'fact_event_count':len(facts_by_event),'lineage_count':len(lineages),
+        'all_lineage_events_match_exactly_one_fact':True,'all_fact_events_have_lineage':True,
+        'all_lineage_source_identity_bound':True,
+        'lineage_count_by_event':dict(lineage_counts),
+    }
+
+def validate_relation_record_binding(record,fact_records):
+    relation=record.get('relation') or {}; value=record.get('normalized_value') or {}; raw=record.get('raw_value') or {}
+    context=record.get('fact_id') or 'UNKNOWN_RELATION'
+    def same(left,right): return str(left or '')==str(right or '')
+    if relation.get('direction')!='SOURCE_TO_TARGET':
+        raise RuntimeError('FACT_BASE_RELATION_DIRECTION_INVALID:'+context)
+    if not relation.get('source_event_id'):
+        raise RuntimeError('FACT_BASE_RELATION_SOURCE_EVENT_MISSING:'+context)
+    field_map={
+        'relation_id':'linkage_id','relation_type':'link_scope','source_event_id':'source_event_id',
+        'source_object_id':'source_object_id','source_object_type':'source_object_type',
+        'target_event_id':'target_event_id','target_object_id':'target_object_id','target_object_type':'target_object_type',
+    }
+    for relation_field,value_field in field_map.items():
+        if not same(relation.get(relation_field),value.get(value_field)) or not same(value.get(value_field),raw.get(value_field)):
+            raise RuntimeError('FACT_BASE_RELATION_VALUE_BINDING_MISMATCH:'+context+':'+relation_field)
+    if not same(record.get('source_event_id'),relation.get('relation_id')):
+        raise RuntimeError('FACT_BASE_RELATION_RECORD_IDENTITY_MISMATCH:'+context)
+    if record.get('evidence_status')!=relation.get('evidence_status'):
+        raise RuntimeError('FACT_BASE_RELATION_EVIDENCE_BINDING_MISMATCH:'+context)
+    for field in ('definitive','promotion_prohibited','link_level'):
+        if not same(value.get(field),raw.get(field)):
+            raise RuntimeError('FACT_BASE_RELATION_SEMANTIC_VALUE_MISMATCH:'+context+':'+field)
+    source=fact_records.get(relation.get('source_fact_id')); target=fact_records.get(relation.get('target_fact_id'))
+    if not source or not target:
+        raise RuntimeError('FACT_BASE_RELATION_ENDPOINT_INVALID:'+context)
+    if not same(source.get('source_event_id'),relation.get('source_event_id')):
+        raise RuntimeError('FACT_BASE_EVENT_SOURCE_MISMATCH:'+context)
+    if relation.get('target_event_id'):
+        if not same(target.get('source_event_id'),relation.get('target_event_id')):
+            raise RuntimeError('FACT_BASE_EVENT_TARGET_MISMATCH:'+context)
+    else:
+        target_value=target.get('normalized_value') or {}; target_raw=target.get('raw_value') or {}
+        for candidate in (target.get('object_id'),target.get('target_object_id'),target_value.get('target_object_id'),target_raw.get('target_object_id')):
+            if not same(candidate,relation.get('target_object_id')):
+                raise RuntimeError('FACT_BASE_RELATION_OBJECT_TARGET_BINDING_MISMATCH:'+context)
+    relation_type=relation.get('relation_type')
+    source_value=source.get('normalized_value') or {}; target_value=target.get('normalized_value') or {}
+    if record.get('navigation_object_id')=='T120' and relation_type=='ORDER_FILL':
+        expected=(
+            relation.get('source_object_type')=='FILL'
+            and relation.get('target_object_type')=='ORDER'
+            and same(relation.get('source_object_id'),source_value.get('fill_id'))
+            and same(relation.get('target_object_id'),target_value.get('order_id'))
+            and relation.get('relation_id')=='K05-LINK-FILL-'+str(source_value.get('fill_id'))
+            and record.get('evidence_status')=='DIRECT'
+            and value.get('definitive')=='true'
+            and value.get('promotion_prohibited')=='false'
+            and value.get('link_level')=='STABLE_KEY_DIRECT'
+        )
+        if not expected: raise RuntimeError('FACT_BASE_ORDER_FILL_RELATION_SEMANTICS_INVALID:'+context)
+    elif record.get('navigation_object_id')=='T120' and relation_type=='ORDER_POSITION_ACTION':
+        expected=(
+            relation.get('source_object_type')=='POSITION_ACTION'
+            and relation.get('target_object_type')=='ORDER'
+            and same(relation.get('source_object_id'),source_value.get('position_action_id'))
+            and same(relation.get('target_object_id'),target_value.get('order_id'))
+            and relation.get('relation_id')=='K05-LINK-POS-'+str(target_value.get('order_id'))
+            and record.get('evidence_status')=='DIRECT'
+            and value.get('definitive')=='true'
+            and value.get('promotion_prohibited')=='false'
+            and value.get('link_level')=='STABLE_KEY_DIRECT'
+        )
+        if not expected: raise RuntimeError('FACT_BASE_ORDER_POSITION_RELATION_SEMANTICS_INVALID:'+context)
+    elif record.get('navigation_object_id')=='T120' and relation_type=='CONDITIONAL_ORDER':
+        expected=(
+            relation.get('source_object_type')=='CONDITIONAL_ORDER'
+            and relation.get('target_object_type')=='POSITION_CYCLE'
+            and same(relation.get('source_object_id'),source_value.get('condition_record_id'))
+            and relation.get('relation_id')=='K05-LINK-COND-'+str(source_value.get('condition_record_id'))
+            and record.get('evidence_status')=='CANDIDATE'
+            and value.get('definitive')=='false'
+            and value.get('promotion_prohibited')=='true'
+            and value.get('link_level')=='STRONG_CONTEXT'
+        )
+        if not expected: raise RuntimeError('FACT_BASE_CONDITIONAL_RELATION_SEMANTICS_INVALID:'+context)
+    return True
+
 def validate_fact_base_against_schema(records,schema):
     validate_trade_object_package_schema(schema)
     allowed_record_types={'FACT_STATEMENT','RELATION_STATEMENT','LINEAGE_STATEMENT','METHOD_EVIDENCE'}
@@ -3236,6 +3384,7 @@ def validate_fact_base_against_schema(records,schema):
     fact_records={record['fact_id']:record for record in records if record.get('record_type')=='FACT_STATEMENT'}
     endpoint_records={record['fact_id']:record for record in fact_records.values() if record.get('fact_subtype')=='RELATION_TARGET_OBJECT_REFERENCE'}
     relations=[record for record in records if record.get('record_type')=='RELATION_STATEMENT']
+    lineage_validation=validate_lineage_bindings(records)
     for record in records:
         if record.get('record_type') not in allowed_record_types: raise RuntimeError('FACT_BASE_RECORD_TYPE_INVALID:'+str(record.get('record_type')))
         if record.get('record_type')=='FACT_STATEMENT' and not required_fact.issubset(record):
@@ -3285,7 +3434,7 @@ def validate_fact_base_against_schema(records,schema):
         source_id=relation.get('source_fact_id'); target_id=relation.get('target_fact_id')
         if not source_id or not target_id or source_id not in fact_records or target_id not in fact_records:
             raise RuntimeError('FACT_BASE_RELATION_ENDPOINT_INVALID:'+record['fact_id'])
-        if relation.get('direction')!='SOURCE_TO_TARGET': raise RuntimeError('FACT_BASE_RELATION_DIRECTION_INVALID:'+record['fact_id'])
+        validate_relation_record_binding(record,fact_records)
         if not relation.get('source_event_id'):
             raise RuntimeError('FACT_BASE_RELATION_SOURCE_EVENT_MISSING:'+record['fact_id'])
         if fact_records[source_id].get('source_event_id')!=relation['source_event_id']:
@@ -3330,6 +3479,10 @@ def validate_fact_base_against_schema(records,schema):
         'record_count':len(records),
         'fact_count':len(fact_records),
         'relation_count':len(relations),
+        'lineage_count':lineage_validation['lineage_count'],
+        'all_lineage_events_match_exactly_one_fact':lineage_validation['all_lineage_events_match_exactly_one_fact'],
+        'all_fact_events_have_lineage':lineage_validation['all_fact_events_have_lineage'],
+        'all_lineage_source_identity_bound':lineage_validation['all_lineage_source_identity_bound'],
         'relation_target_endpoint_fact_count':len(endpoint_records),
         'event_target_relation_count':len(relations)-object_target_relations,
         'object_target_relation_count':object_target_relations,
@@ -4663,7 +4816,7 @@ def visual_record_has_attention(record):
         or record.get('record_type')=='METHOD_EVIDENCE'
     )
 
-def visual_record(record):
+def visual_record(record,include_technical=False):
     normalized=record.get('normalized_value')
     details=[]
     if isinstance(normalized,dict):
@@ -4681,7 +4834,7 @@ def visual_record(record):
     if state.get('candidate_sets'): warning_parts.append('保留多个候选')
     if record.get('record_type')=='METHOD_EVIDENCE': warning_parts.append('这是方法边界，不是新计算结果')
     source_path=str(record.get('source_path') or '')
-    return {
+    result={
         'id':record['fact_id'],'sequence':record['stable_display_sequence'],
         'canonical_record_sha256':hashlib.sha256(canonical(record).encode('utf-8')).hexdigest(),
         'type':record['record_type'],'type_label':VISUAL_RECORD_LABELS[record['record_type']],
@@ -4704,8 +4857,900 @@ def visual_record(record):
             'target_fact':relation.get('target_fact_id'),
         } if relation else None,
     }
+    if include_technical:
+        result['technical']={
+            'raw_value':record.get('raw_value'),'normalized_value':record.get('normalized_value'),
+            'units':record.get('units'),'time':record.get('time'),'value_state':record.get('value_state'),
+            'source_identity':record.get('source_identity'),'source_event_id':record.get('source_event_id'),
+            'position_cycle_id':record.get('position_cycle_id'),'relation':record.get('relation'),
+            'evidence_status':record.get('evidence_status'),'adoption_status':record.get('adoption_status'),
+            'execution_status':record.get('execution_status'),'lifecycle_status':record.get('lifecycle_status'),
+            'conflict_ids':record.get('conflict_ids'),'record_content_sha256':record.get('record_content_sha256'),
+        }
+    return result
 
-def build_user_visual_payload(records,fact_path,contract_id):
+def trade_story_decimal(record,field,context):
+    value=(record.get('normalized_value') or {}).get(field)
+    if value in (None,''):
+        raise RuntimeError('TRADE_STORY_REQUIRED_DECIMAL_MISSING:'+context+':'+field)
+    try: return Decimal(str(value))
+    except Exception as error: raise RuntimeError('TRADE_STORY_DECIMAL_INVALID:'+context+':'+field) from error
+
+def trade_story_unit(record,field,context):
+    value=(record.get('units') or {}).get(field)
+    if value in (None,''): raise RuntimeError('TRADE_STORY_REQUIRED_UNIT_MISSING:'+context+':'+field)
+    return str(value)
+
+def trade_story_duration_seconds(start,end,context):
+    try:
+        seconds=int((datetime.fromisoformat(str(end))-datetime.fromisoformat(str(start))).total_seconds())
+    except Exception as error:
+        raise RuntimeError('TRADE_STORY_TIME_BOUNDARY_INVALID:'+context) from error
+    if seconds<0: raise RuntimeError('TRADE_STORY_TIME_BOUNDARY_REVERSED:'+context)
+    return seconds
+
+def trade_story_lineage_ids(fact,lineages):
+    event_id=fact.get('source_event_id')
+    return [
+        item['fact_id'] for item in sorted(lineages,key=lambda value:value['stable_display_sequence'])
+        if (item.get('normalized_value') or {}).get('event_id')==event_id
+    ]
+
+def trade_story_relation(records,relation_type,source_fact_id=None,target_fact_id=None,evidence_status=None):
+    matches=[]
+    for record in records:
+        if record.get('record_type')!='RELATION_STATEMENT': continue
+        relation=record.get('relation') or {}
+        if relation.get('relation_type')!=relation_type: continue
+        if source_fact_id is not None and relation.get('source_fact_id')!=source_fact_id: continue
+        if target_fact_id is not None and relation.get('target_fact_id')!=target_fact_id: continue
+        if evidence_status is not None and record.get('evidence_status')!=evidence_status: continue
+        matches.append(record)
+    return sorted(matches,key=lambda value:value['stable_display_sequence'])
+
+def trade_story_source_field(record,field):
+    return {'fact_id':record['fact_id'],'path':'normalized_value.'+field}
+
+def trade_story_time(record,field,label):
+    normalized=record.get('normalized_value') or {}
+    return {
+        'label':label,'value':normalized.get(field) or '未记录',
+        'timezone_basis':(record.get('time') or {}).get('timezone_basis') or normalized.get('time_basis') or '未记录',
+        'original_timezone':(record.get('time') or {}).get('original_timezone') or '未记录',
+        'precision':(record.get('time') or {}).get('precision') or '未记录',
+        'source_field':trade_story_source_field(record,field),
+    }
+
+def trade_story_evidence_ref(record,lineages=None):
+    source_path=str(record.get('source_path') or '')
+    return {
+        'id':record['fact_id'],'type':record['record_type'],'summary':record.get('plain_summary') or '',
+        'evidence_status':record.get('evidence_status'),'adoption_status':record.get('adoption_status'),
+        'can_prove':record.get('can_prove') or '只证明原记录所写内容。',
+        'cannot_prove':record.get('cannot_prove') or '不能超出原记录推断。',
+        'source':{
+            'file':Path(source_path).name if source_path else '未记录来源文件',
+            'table':record.get('source_table'),'row':record.get('source_row'),
+            'locator':(record.get('source_identity') or {}).get('source_locator'),
+            'sha256':record.get('source_sha256'),
+        },
+        'lineage_ids':trade_story_lineage_ids(record,lineages or []) if record.get('record_type')=='FACT_STATEMENT' else [],
+    }
+
+def order_fill_chain(fills,position_before,position_after,context):
+    remaining=list(fills); ordered=[]; current=position_before
+    while remaining:
+        matches=[item for item in remaining if trade_story_decimal(item,'position_before',context)==current]
+        if len(matches)!=1:
+            raise RuntimeError('TRADE_STORY_FILL_POSITION_CHAIN_NOT_UNIQUE:'+context+':'+decimal_text(current))
+        selected=matches[0]; ordered.append(selected); remaining.remove(selected)
+        current=trade_story_decimal(selected,'position_after',context)
+    if current!=position_after:
+        raise RuntimeError('TRADE_STORY_FILL_POSITION_CHAIN_END_MISMATCH:'+context)
+    return ordered
+
+def build_trade_story(records,object_id):
+    object_records=[item for item in records if item.get('navigation_object_id')==object_id]
+    if object_id!='T120': return None
+    if len(object_records)!=172: raise RuntimeError('TRADE_STORY_T120_RECORD_COUNT_MISMATCH')
+    facts=[item for item in object_records if item.get('record_type')=='FACT_STATEMENT']
+    relations=[item for item in object_records if item.get('record_type')=='RELATION_STATEMENT']
+    lineages=[item for item in object_records if item.get('record_type')=='LINEAGE_STATEMENT']
+    if (len(facts),len(relations),len(lineages))!=(56,52,64):
+        raise RuntimeError('TRADE_STORY_T120_RECORD_TYPE_COUNTS_MISMATCH')
+    lineage_validation=validate_lineage_bindings(object_records,'T120')
+    positions=[item for item in facts if (item.get('normalized_value') or {}).get('position_action_id')]
+    orders=[item for item in facts if (item.get('normalized_value') or {}).get('order_created_at')]
+    fills=[item for item in facts if (item.get('normalized_value') or {}).get('fill_id')]
+    conditions=[item for item in facts if (item.get('normalized_value') or {}).get('condition_record_id')]
+    if (len(positions),len(orders),len(fills),len(conditions))!=(4,4,38,10):
+        raise RuntimeError('TRADE_STORY_T120_BUSINESS_COUNTS_MISMATCH')
+    expected_lineage_count_by_event={
+        item['source_event_id']:(3 if item in orders else 1) for item in [*positions,*orders,*fills,*conditions]
+    }
+    if lineage_validation['lineage_count']!=64 or lineage_validation['lineage_count_by_event']!=expected_lineage_count_by_event:
+        raise RuntimeError('TRADE_STORY_T120_LINEAGE_DISTRIBUTION_MISMATCH')
+    expected_symbol='BTCUSDT'; expected_trade_id='T120'; expected_cycle_id='S05-CYC-0a162663ec5e434264fa5333'
+    for record in [*positions,*orders,*fills,*conditions]:
+        value=record.get('normalized_value') or {}; context='T120_IDENTITY_'+record['fact_id']
+        if canonical(record.get('raw_value') or {})!=canonical(value):
+            raise RuntimeError('TRADE_STORY_BUSINESS_RAW_NORMALIZED_DIVERGENCE:'+context)
+        if value.get('symbol')!=expected_symbol or value.get('trade_id')!=expected_trade_id:
+            raise RuntimeError('TRADE_STORY_SYMBOL_OR_TRADE_ID_MISMATCH:'+context)
+        cycle=value.get('position_cycle_id') or value.get('candidate_cycle_id')
+        if cycle!=expected_cycle_id: raise RuntimeError('TRADE_STORY_POSITION_CYCLE_ID_MISMATCH:'+context)
+    for record in positions:
+        context='T120_POSITION_UNITS_'+record['fact_id']
+        if (record.get('normalized_value') or {}).get('position_direction')!='SHORT':
+            raise RuntimeError('TRADE_STORY_POSITION_DIRECTION_INVALID:'+context)
+        for field in ('quantity','position_before','position_after'):
+            if trade_story_unit(record,field,context)!='SOURCE_QUANTITY_UNIT_NOT_EXPLICIT':
+                raise RuntimeError('TRADE_STORY_QUANTITY_UNIT_PROMOTED:'+context+':'+field)
+        value=record.get('normalized_value') or {}
+        units=record.get('units') or {}
+        if units.get('fee')!=record.get('currency') or units.get('realized_pnl')!=record.get('currency'):
+            raise RuntimeError('TRADE_STORY_POSITION_MONEY_UNIT_CURRENCY_MISMATCH:'+context)
+        trade_story_duration_seconds(value.get('action_start_time'),value.get('action_end_time'),context)
+    for record in orders:
+        context='T120_ORDER_UNITS_'+record['fact_id']
+        for field in ('order_quantity','executed_quantity'):
+            if trade_story_unit(record,field,context)!='SOURCE_QUANTITY_UNIT_NOT_EXPLICIT':
+                raise RuntimeError('TRADE_STORY_QUANTITY_UNIT_PROMOTED:'+context+':'+field)
+        value=record.get('normalized_value') or {}
+        trade_story_duration_seconds(value.get('order_created_at'),value.get('order_updated_at'),context)
+    for record in fills:
+        context='T120_FILL_IDENTITY_'+record['fact_id']; value=record['normalized_value']
+        if value.get('position_direction')!='SHORT' or value.get('account_origin')!='NORMAL_FUTURES':
+            raise RuntimeError('TRADE_STORY_FILL_DIRECTION_OR_ACCOUNT_INVALID:'+context)
+        for field in ('quantity','position_before','position_after'):
+            if trade_story_unit(record,field,context)!='SOURCE_QUANTITY_UNIT_NOT_EXPLICIT':
+                raise RuntimeError('TRADE_STORY_QUANTITY_UNIT_PROMOTED:'+context+':'+field)
+        for field in ('fee','realized_pnl'):
+            if trade_story_unit(record,field,context)!='USDT':
+                raise RuntimeError('TRADE_STORY_MONEY_UNIT_INVALID:'+context+':'+field)
+        if record.get('currency')!='USDT' or value.get('fee_asset')!='USDT':
+            raise RuntimeError('TRADE_STORY_FILL_CURRENCY_INVALID:'+context)
+        if value.get('position_before')!='0' and value.get('average_price_before') in (None,''):
+            raise RuntimeError('TRADE_STORY_AVERAGE_PRICE_BEFORE_MISSING:'+context)
+        if value.get('position_after')!='0' and value.get('average_price_after') in (None,''):
+            raise RuntimeError('TRADE_STORY_AVERAGE_PRICE_AFTER_MISSING:'+context)
+    for record in conditions:
+        context='T120_CONDITION_UNITS_'+record['fact_id']
+        if trade_story_unit(record,'quantity',context)!='SOURCE_QUANTITY_UNIT_NOT_EXPLICIT':
+            raise RuntimeError('TRADE_STORY_QUANTITY_UNIT_PROMOTED:'+context+':quantity')
+    by_fact={item['fact_id']:item for item in records}
+    for relation_record in relations: validate_relation_record_binding(relation_record,by_fact)
+    by_order_id={(item.get('normalized_value') or {}).get('order_id'):item for item in orders}
+    starts=[item for item in positions if trade_story_decimal(item,'position_before','T120_START')==0 and trade_story_decimal(item,'position_after','T120_START')!=0]
+    if len(starts)!=1: raise RuntimeError('TRADE_STORY_START_POSITION_NOT_UNIQUE')
+    ordered_positions=[]; remaining=list(positions); current=starts[0]
+    while current:
+        ordered_positions.append(current); remaining.remove(current)
+        after=trade_story_decimal(current,'position_after','T120_POSITION_CHAIN')
+        if after==0:
+            current=None
+        else:
+            matches=[item for item in remaining if trade_story_decimal(item,'position_before','T120_POSITION_CHAIN')==after]
+            if len(matches)!=1: raise RuntimeError('TRADE_STORY_POSITION_CHAIN_NOT_UNIQUE:'+decimal_text(after))
+            current=matches[0]
+    if remaining or len(ordered_positions)!=4: raise RuntimeError('TRADE_STORY_POSITION_CHAIN_INCOMPLETE')
+    steps=[]; position_path=[decimal_text(trade_story_decimal(ordered_positions[0],'position_before','T120_POSITION_PATH'))]
+    action_labels={'OPEN_INITIAL':'开始做空','ADD_POSITION':'加仓','CLOSE_FULL':'全部平仓'}
+    for step_index,position in enumerate(ordered_positions,1):
+        pvalue=position['normalized_value']; context='T120_STEP_'+str(step_index)
+        position_before=trade_story_decimal(position,'position_before',context)
+        position_after=trade_story_decimal(position,'position_after',context)
+        quantity=trade_story_decimal(position,'quantity',context)
+        expected_action='OPEN_INITIAL' if position_before==0 and position_after>0 else 'ADD_POSITION' if position_after>position_before else 'CLOSE_FULL' if position_before>0 and position_after==0 else None
+        if not expected_action or pvalue.get('action_type')!=expected_action:
+            raise RuntimeError('TRADE_STORY_POSITION_ACTION_SEMANTICS_INVALID:'+context)
+        expected_side='BUY' if expected_action=='CLOSE_FULL' else 'SELL'
+        if pvalue.get('side')!=expected_side:
+            raise RuntimeError('TRADE_STORY_POSITION_SIDE_INVALID:'+context)
+        position_path.append(decimal_text(position_after))
+        position_links=trade_story_relation(
+            object_records,'ORDER_POSITION_ACTION',source_fact_id=position['fact_id'],evidence_status='DIRECT'
+        )
+        if len(position_links)!=1: raise RuntimeError('TRADE_STORY_POSITION_ORDER_RELATION_NOT_UNIQUE:'+context)
+        position_link=position_links[0]; relation=position_link['relation']
+        if relation.get('source_object_type')!='POSITION_ACTION' or relation.get('target_object_type')!='ORDER':
+            raise RuntimeError('TRADE_STORY_POSITION_ORDER_RELATION_DIRECTION_INVALID:'+context)
+        order=by_fact.get(relation.get('target_fact_id'))
+        if order not in orders or (order.get('normalized_value') or {}).get('order_id')!=pvalue.get('order_id'):
+            raise RuntimeError('TRADE_STORY_POSITION_ORDER_IDENTITY_MISMATCH:'+context)
+        ovalue=order['normalized_value']; order_quantity=trade_story_decimal(order,'order_quantity',context)
+        if ovalue.get('actual_position_action')!=expected_action or ovalue.get('side')!=expected_side:
+            raise RuntimeError('TRADE_STORY_ORDER_ACTION_OR_SIDE_INVALID:'+context)
+        executed_quantity=trade_story_decimal(order,'executed_quantity',context)
+        unfilled_quantity=order_quantity-executed_quantity
+        if unfilled_quantity<0: raise RuntimeError('TRADE_STORY_ORDER_NEGATIVE_REMAINDER:'+context)
+        fill_links=trade_story_relation(object_records,'ORDER_FILL',target_fact_id=order['fact_id'],evidence_status='DIRECT')
+        linked_fills=[]
+        for fill_link in fill_links:
+            fill_relation=fill_link['relation']
+            if fill_relation.get('source_object_type')!='FILL' or fill_relation.get('target_object_type')!='ORDER':
+                raise RuntimeError('TRADE_STORY_ORDER_FILL_RELATION_DIRECTION_INVALID:'+context)
+            fill=by_fact.get(fill_relation.get('source_fact_id'))
+            if fill not in fills: raise RuntimeError('TRADE_STORY_ORDER_FILL_ENDPOINT_INVALID:'+context)
+            if (fill.get('normalized_value') or {}).get('order_id')!=ovalue.get('order_id'):
+                raise RuntimeError('TRADE_STORY_FILL_ORDER_ID_MISMATCH:'+context)
+            if (fill.get('normalized_value') or {}).get('side')!=expected_side:
+                raise RuntimeError('TRADE_STORY_FILL_SIDE_INVALID:'+context)
+            linked_fills.append(fill)
+        linked_fills=order_fill_chain(linked_fills,position_before,position_after,context)
+        fill_member_ids=[(item.get('normalized_value') or {}).get('fill_id') for item in linked_fills]
+        declared_fill_ids=[value for value in str(pvalue.get('fill_ids') or '').split('|') if value]
+        if set(fill_member_ids)!=set(declared_fill_ids) or len(fill_member_ids)!=len(declared_fill_ids):
+            raise RuntimeError('TRADE_STORY_FILL_MEMBER_SET_MISMATCH:'+context)
+        fill_quantity=sum((trade_story_decimal(item,'quantity',context) for item in linked_fills),Decimal('0'))
+        if fill_quantity!=executed_quantity or executed_quantity!=quantity or abs(position_after-position_before)!=quantity:
+            raise RuntimeError('TRADE_STORY_QUANTITY_RECONCILIATION_FAILED:'+context)
+        if int(str(pvalue.get('fill_count')))!=len(linked_fills) or int(str(ovalue.get('fill_count')))!=len(linked_fills):
+            raise RuntimeError('TRADE_STORY_FILL_COUNT_RECONCILIATION_FAILED:'+context)
+        if ovalue.get('order_type')!='LIMIT': raise RuntimeError('TRADE_STORY_ORDER_TYPE_INVALID:'+context)
+        status=str(ovalue.get('status'))
+        if executed_quantity==order_quantity and unfilled_quantity==0:
+            if status!='FILLED': raise RuntimeError('TRADE_STORY_FULL_FILL_STATUS_INVALID:'+context)
+        elif executed_quantity>0 and unfilled_quantity>0:
+            if status!='CANCELED': raise RuntimeError('TRADE_STORY_PARTIAL_FILL_TERMINAL_STATUS_INVALID:'+context)
+        else:
+            raise RuntimeError('TRADE_STORY_ORDER_EXECUTION_STATE_OUTSIDE_FIXED_SAMPLE:'+context)
+        fee_assets={str((item.get('normalized_value') or {}).get('fee_asset') or '') for item in linked_fills}
+        if len(fee_assets)!=1 or '' in fee_assets: raise RuntimeError('TRADE_STORY_FILL_FEE_ASSET_NOT_UNIQUE:'+context)
+        fee_asset=next(iter(fee_assets)); fill_fee=sum((trade_story_decimal(item,'fee',context) for item in linked_fills),Decimal('0'))
+        if any(
+            str((item.get('normalized_value') or {}).get('fee_asset') or '')!=trade_story_unit(item,'fee',context)
+            or str((item.get('normalized_value') or {}).get('fee_asset') or '')!=trade_story_unit(item,'realized_pnl',context)
+            for item in linked_fills
+        ):
+            raise RuntimeError('TRADE_STORY_FILL_FEE_ASSET_UNIT_MISMATCH:'+context)
+        if fill_fee!=trade_story_decimal(position,'fee',context): raise RuntimeError('TRADE_STORY_FEE_RECONCILIATION_FAILED:'+context)
+        weighted=sum((trade_story_decimal(item,'quantity',context)*trade_story_decimal(item,'price',context) for item in linked_fills),Decimal('0'))/fill_quantity
+        if weighted!=trade_story_decimal(position,'weighted_price',context): raise RuntimeError('TRADE_STORY_WEIGHTED_PRICE_MISMATCH:'+context)
+        average_tolerance=Decimal('0.00000001')
+        for fill in linked_fills:
+            before=trade_story_decimal(fill,'position_before',context); after=trade_story_decimal(fill,'position_after',context)
+            fill_quantity_value=trade_story_decimal(fill,'quantity',context); fill_price=trade_story_decimal(fill,'price',context)
+            if abs(after-before)!=fill_quantity_value:
+                raise RuntimeError('TRADE_STORY_FILL_POSITION_DELTA_MISMATCH:'+context+':'+fill['fact_id'])
+            value=fill.get('normalized_value') or {}; before_average=value.get('average_price_before'); after_average=value.get('average_price_after')
+            if after>before:
+                expected_average=fill_price if before==0 else (before*Decimal(str(before_average))+fill_quantity_value*fill_price)/after
+                if after_average in (None,'') or abs(Decimal(str(after_average))-expected_average)>average_tolerance:
+                    raise RuntimeError('TRADE_STORY_HOLDING_AVERAGE_PRICE_MATH_MISMATCH:'+context+':'+fill['fact_id'])
+            elif after<before:
+                if after==0:
+                    if after_average not in (None,''):
+                        raise RuntimeError('TRADE_STORY_CLOSED_POSITION_AVERAGE_PRICE_NOT_EMPTY:'+context+':'+fill['fact_id'])
+                elif before_average in (None,'') or after_average in (None,'') or abs(Decimal(str(after_average))-Decimal(str(before_average)))>average_tolerance:
+                    raise RuntimeError('TRADE_STORY_REDUCED_POSITION_AVERAGE_PRICE_CHANGED:'+context+':'+fill['fact_id'])
+            else:
+                raise RuntimeError('TRADE_STORY_FILL_DID_NOT_CHANGE_POSITION:'+context+':'+fill['fact_id'])
+        fill_realized=sum((trade_story_decimal(item,'realized_pnl',context) for item in linked_fills),Decimal('0'))
+        if fill_realized!=trade_story_decimal(position,'realized_pnl',context):
+            raise RuntimeError('TRADE_STORY_REALIZED_PNL_RECONCILIATION_FAILED:'+context)
+        for previous,current_fill in zip(linked_fills,linked_fills[1:]):
+            previous_after=(previous.get('normalized_value') or {}).get('average_price_after')
+            current_before=(current_fill.get('normalized_value') or {}).get('average_price_before')
+            if previous_after!=current_before:
+                raise RuntimeError('TRADE_STORY_HOLDING_AVERAGE_PRICE_CHAIN_BROKEN:'+context)
+        average_price_before=(linked_fills[0].get('normalized_value') or {}).get('average_price_before')
+        average_price_before=str(average_price_before) if average_price_before not in (None,'') else 'NOT_APPLICABLE_NO_POSITION'
+        average_price_after=(linked_fills[-1].get('normalized_value') or {}).get('average_price_after')
+        average_price_after=str(average_price_after) if average_price_after not in (None,'') else 'NOT_APPLICABLE_POSITION_CLOSED'
+        action_type=str(pvalue.get('action_type'))
+        fills_out=[]
+        for member_index,fill in enumerate(linked_fills,1):
+            fvalue=fill['normalized_value']
+            fills_out.append({
+                'member_index':member_index,'fact_id':fill['fact_id'],'fill_id':fvalue.get('fill_id'),
+                'time':trade_story_time(fill,'fill_time','分次成交时间（来源本地时间，时区待核定）'),
+                'quantity':decimal_text(trade_story_decimal(fill,'quantity',context)),
+                'price':decimal_text(trade_story_decimal(fill,'price',context)),
+                'fee':decimal_text(trade_story_decimal(fill,'fee',context)),'fee_asset':fee_asset,
+                'realized_pnl':decimal_text(trade_story_decimal(fill,'realized_pnl',context)),
+                'position_before':decimal_text(trade_story_decimal(fill,'position_before',context)),
+                'position_after':decimal_text(trade_story_decimal(fill,'position_after',context)),
+                'holding_average_price_before':str(fvalue.get('average_price_before')) if fvalue.get('average_price_before') not in (None,'') else 'NOT_APPLICABLE_NO_POSITION',
+                'holding_average_price_after':str(fvalue.get('average_price_after')) if fvalue.get('average_price_after') not in (None,'') else 'NOT_APPLICABLE_POSITION_CLOSED',
+                'lineage_ids':trade_story_lineage_ids(fill,lineages),
+                'source_fields':[
+                    trade_story_source_field(fill,'quantity'),trade_story_source_field(fill,'price'),
+                    trade_story_source_field(fill,'fee'),trade_story_source_field(fill,'realized_pnl'),
+                    trade_story_source_field(fill,'position_before'),trade_story_source_field(fill,'position_after'),
+                ],
+            })
+        lineage_ids=[]
+        for member in [position,order,*linked_fills]: lineage_ids.extend(trade_story_lineage_ids(member,lineages))
+        steps.append({
+            'step':step_index,'action_type':action_type,'title':action_labels.get(action_type,action_type),
+            'position_fact_id':position['fact_id'],'order_fact_id':order['fact_id'],
+            'position_order_relation_id':position_link['fact_id'],
+            'fill_relation_ids':[item['fact_id'] for item in fill_links],
+            'lineage_ids':list(dict.fromkeys(lineage_ids)),
+            'position_before':decimal_text(position_before),'position_after':decimal_text(position_after),
+            'position_change':decimal_text(quantity),'position_direction':pvalue.get('position_direction'),
+            'position_change_direction':'DECREASE_SHORT_TO_ZERO' if expected_action=='CLOSE_FULL' else 'INCREASE_SHORT',
+            'side':ovalue.get('side'),'order_type':ovalue.get('order_type'),
+            'order_id':ovalue.get('order_id'),
+            'order_quantity':decimal_text(order_quantity),'executed_quantity':decimal_text(executed_quantity),
+            'unfilled_quantity':decimal_text(unfilled_quantity),'order_status':status,
+            'filled_percent':decimal_text(executed_quantity/order_quantity*Decimal('100')),
+            'unfilled_percent':decimal_text(unfilled_quantity/order_quantity*Decimal('100')),
+            'order_price':decimal_text(trade_story_decimal(order,'order_price',context)),
+            'weighted_fill_price':decimal_text(weighted),'holding_average_price_before':average_price_before,
+            'holding_average_price_after':average_price_after,'fill_count':len(linked_fills),'fills':fills_out,
+            'fee_from_fills':{'value':decimal_text(fill_fee),'currency':fee_asset,'member_fact_ids':[item['fact_id'] for item in linked_fills]},
+            'source_realized_pnl':{'value':decimal_text(fill_realized),'currency':fee_asset,'member_fact_ids':[item['fact_id'] for item in linked_fills]},
+            'times':[
+                trade_story_time(order,'order_created_at','委托创建时间（来源标为北京时间）'),
+                trade_story_time(order,'order_updated_at','委托最后更新时间（来源标为北京时间）'),
+                trade_story_time(position,'action_start_time','仓位动作时间（来源本地时间，时区待核定）'),
+            ],
+            'order_candidate_lifecycle':ovalue.get('candidate_lifecycle_actions') or '',
+            'order_reprice_replace_status':ovalue.get('reprice_replace_status') or 'UNKNOWN',
+            'summary_definitions':{
+                'position_transition':{'metric':'本次仓位变化','value':decimal_text(position_before)+' → '+decimal_text(position_after),'formula':'首条成交position_before → 末条成交position_after','denominator':'当前仓位动作的全部直接成交成员','member_fact_ids':[item['fact_id'] for item in linked_fills],'filter':'按仓位连续性排列，不跨时间口径重排','data_version_ref':'payload.meta.fact_base_sha256'},
+                'fill_count':{'metric':'本委托分次成交条数','value':len(linked_fills),'formula':'count(全部直接ORDER_FILL成交成员)','denominator':'当前委托的直接ORDER_FILL成员','member_fact_ids':[item['fact_id'] for item in linked_fills],'filter':'每个事实编号只计一次','data_version_ref':'payload.meta.fact_base_sha256'},
+                'executed_quantity':{'metric':'本委托实际成交数量','value':decimal_text(executed_quantity),'formula':'sum(全部成员成交数量)','denominator':'当前委托的直接ORDER_FILL成员','member_fact_ids':[item['fact_id'] for item in linked_fills],'filter':'只统计当前委托的直接ORDER_FILL成员','data_version_ref':'payload.meta.fact_base_sha256'},
+                'unfilled_quantity':{'metric':'本委托未成交数量','value':decimal_text(unfilled_quantity),'formula':'委托数量 − 实际成交数量','denominator':'当前委托自身','member_fact_ids':[order['fact_id'],*[item['fact_id'] for item in linked_fills]],'filter':'委托数量来自委托事实；成交数量来自直接ORDER_FILL成员','data_version_ref':'payload.meta.fact_base_sha256'},
+                'filled_percent':{'metric':'本委托成交比例','value':decimal_text(executed_quantity/order_quantity*Decimal('100')),'formula':'实际成交数量 ÷ 委托数量 × 100','denominator':'当前委托数量','member_fact_ids':[order['fact_id'],*[item['fact_id'] for item in linked_fills]],'filter':'分子只统计当前委托的直接ORDER_FILL成员','data_version_ref':'payload.meta.fact_base_sha256'},
+                'unfilled_percent':{'metric':'本委托未成交比例','value':decimal_text(unfilled_quantity/order_quantity*Decimal('100')),'formula':'未成交数量 ÷ 委托数量 × 100','denominator':'当前委托数量','member_fact_ids':[order['fact_id'],*[item['fact_id'] for item in linked_fills]],'filter':'未成交数量为委托数量减实际成交数量','data_version_ref':'payload.meta.fact_base_sha256'},
+                'weighted_fill_price':{'metric':'本委托成交加权价','value':decimal_text(weighted),'formula':'sum(成交数量×成交价格) ÷ sum(成交数量)','denominator':'当前委托的直接ORDER_FILL成员','member_fact_ids':[item['fact_id'] for item in linked_fills],'filter':'只统计当前委托的直接ORDER_FILL成员','data_version_ref':'payload.meta.fact_base_sha256'},
+                'fill_fee':{'metric':'本委托成交手续费合计','value':decimal_text(fill_fee),'formula':'sum(全部成员fee)','denominator':'当前委托的直接ORDER_FILL成员','member_fact_ids':[item['fact_id'] for item in linked_fills],'filter':'只统计成交记录，不重复相加仓位动作同值','data_version_ref':'payload.meta.fact_base_sha256'},
+                'source_realized_pnl':{'metric':'本委托来源成交盈亏字段合计','value':decimal_text(fill_realized),'formula':'sum(全部成员realized_pnl)','denominator':'当前委托的直接ORDER_FILL成员','member_fact_ids':[item['fact_id'] for item in linked_fills],'filter':'只合计来源字段，不冒充整笔正式净结果','data_version_ref':'payload.meta.fact_base_sha256'},
+                'holding_average_price_after':{'metric':'本次成交后的持仓成本均价','value':average_price_after,'formula':'按仓位连续性排列后的最后一条成交记录average_price_after','denominator':'当前委托最后一条直接ORDER_FILL成交成员','member_fact_ids':[linked_fills[-1]['fact_id']],'filter':'仓位归零时按来源规则显示不适用，不自行补成0','data_version_ref':'payload.meta.fact_base_sha256'},
+            },
+            'evidence_status':'DIRECT_RELATION_WITH_BOUNDED_FACT_MEMBERS','adoption_status':'NOT_FORMALLY_ADOPTED',
+            'cannot_prove':'不能证明下单原因、主观意图、统一绝对时间或整笔正式净结果。',
+        })
+    if position_path!=['0','5','6.226','10.026','0']:
+        raise RuntimeError('TRADE_STORY_POSITION_PATH_UNEXPECTED')
+    for previous,current_step in zip(steps,steps[1:]):
+        if previous['holding_average_price_after']!='NOT_APPLICABLE_POSITION_CLOSED' and previous['holding_average_price_after']!=current_step['holding_average_price_before']:
+            raise RuntimeError('TRADE_STORY_HOLDING_AVERAGE_PRICE_STEP_CHAIN_BROKEN')
+    condition_out=[]; external_endpoint_ids=[]
+    for condition in sorted(conditions,key=lambda item:((item.get('normalized_value') or {}).get('created_at') or '',item['stable_display_sequence'])):
+        cvalue=condition['normalized_value']; links=trade_story_relation(
+            object_records,'CONDITIONAL_ORDER',source_fact_id=condition['fact_id'],evidence_status='CANDIDATE'
+        )
+        expected_condition_semantics={
+            '止损型':('市价止损','>='),'止盈型':('市价止盈','<='),
+        }
+        role=cvalue.get('condition_role'); expected_condition=expected_condition_semantics.get(role)
+        if not expected_condition or (cvalue.get('condition_type'),cvalue.get('comparison_operator'))!=expected_condition:
+            raise RuntimeError('TRADE_STORY_CONDITION_ROLE_TYPE_OPERATOR_MISMATCH:'+condition['fact_id'])
+        expected_condition_state={
+            '已取消':('CANCELED','撤销'),
+            '已过期':('EXPIRED','过期'),
+        }.get(cvalue.get('raw_status'))
+        if not expected_condition_state or (cvalue.get('status'),cvalue.get('terminal_type'))!=expected_condition_state:
+            raise RuntimeError('TRADE_STORY_CONDITION_STATUS_TERMINAL_MISMATCH:'+condition['fact_id'])
+        if cvalue.get('is_triggered')!='否' or cvalue.get('generated_order_id') not in (None,''):
+            raise RuntimeError('TRADE_STORY_CONDITION_NON_TRIGGER_BOUNDARY_INVALID:'+condition['fact_id'])
+        reason_status=cvalue.get('reason_status'); reason_text=cvalue.get('reason_text')
+        if reason_status not in {'UNKNOWN','不适用'}:
+            raise RuntimeError('TRADE_STORY_CONDITION_REASON_STATUS_INVALID:'+condition['fact_id'])
+        if (reason_status=='UNKNOWN' and reason_text not in (None,'')) or (reason_status!='UNKNOWN' and reason_text in (None,'')):
+            raise RuntimeError('TRADE_STORY_CONDITION_REASON_STATUS_TEXT_MISMATCH:'+condition['fact_id'])
+        duration=trade_story_duration_seconds(cvalue.get('created_at'),cvalue.get('terminal_at'),'T120_CONDITION_'+condition['fact_id'])
+        try: declared_duration=int(str(cvalue.get('lifecycle_duration_seconds')))
+        except Exception as error: raise RuntimeError('TRADE_STORY_CONDITION_DURATION_INVALID:'+condition['fact_id']) from error
+        if declared_duration!=duration:
+            raise RuntimeError('TRADE_STORY_CONDITION_DURATION_MISMATCH:'+condition['fact_id'])
+        if len(links)!=1: raise RuntimeError('TRADE_STORY_CONDITION_RELATION_NOT_UNIQUE:'+condition['fact_id'])
+        link=links[0]; relation=link['relation']
+        if relation.get('source_object_type')!='CONDITIONAL_ORDER' or relation.get('target_object_type')!='POSITION_CYCLE':
+            raise RuntimeError('TRADE_STORY_CONDITION_RELATION_DIRECTION_INVALID:'+condition['fact_id'])
+        if str((link.get('normalized_value') or {}).get('promotion_prohibited'))!='true':
+            raise RuntimeError('TRADE_STORY_CONDITION_PROMOTION_BOUNDARY_MISSING:'+condition['fact_id'])
+        target_fact_id=relation.get('target_fact_id'); target=by_fact.get(target_fact_id)
+        if not target or target.get('navigation_object_id')==object_id:
+            raise RuntimeError('TRADE_STORY_CONDITION_EXTERNAL_ENDPOINT_INVALID:'+condition['fact_id'])
+        target_value=target.get('normalized_value') or {}; target_raw=target.get('raw_value') or {}
+        if (
+            relation.get('target_object_id')!=expected_cycle_id
+            or target.get('object_id')!=expected_cycle_id or target.get('target_object_id')!=expected_cycle_id
+            or target_value.get('target_object_id')!=expected_cycle_id or target_raw.get('target_object_id')!=expected_cycle_id
+        ):
+            raise RuntimeError('TRADE_STORY_CONDITION_TARGET_CYCLE_IDENTITY_MISMATCH:'+condition['fact_id'])
+        external_endpoint_ids.append(target_fact_id)
+        condition_out.append({
+            'fact_id':condition['fact_id'],'relation_id':link['fact_id'],'target_reference_fact_id':target_fact_id,
+            'condition_id':cvalue.get('condition_record_id'),'role':cvalue.get('condition_role'),
+            'condition_type':cvalue.get('condition_type'),'comparison_operator':cvalue.get('comparison_operator'),
+            'trigger_price':cvalue.get('trigger_price') or '未记录','trigger_basis':cvalue.get('trigger_basis') or '未记录',
+            'created_at':cvalue.get('created_at') or '未记录','terminal_at':cvalue.get('terminal_at') or '未记录',
+            'created_time':trade_story_time(condition,'created_at','条件委托创建时间（来源本地时间，时区未明确）'),
+            'terminal_time':trade_story_time(condition,'terminal_at','条件委托结束时间（来源本地时间，时区未明确）'),
+            'terminal_type':cvalue.get('terminal_type') or '未记录','status':cvalue.get('status'),
+            'is_triggered':cvalue.get('is_triggered'),'generated_order_id':cvalue.get('generated_order_id') or '',
+            'reason_status':reason_status or 'UNKNOWN','reason_text':reason_text or '',
+            'replacement_or_coverage_status':'UNKNOWN_NOT_CONFIRMED_FROM_CURRENT_RECORDS',
+            'human_reason_status':'UNKNOWN','ai_judgement_status':'NOT_INCLUDED_IN_OBJECTIVE_FACT',
+            'relationship_status':'CANDIDATE_STRONG_CONTEXT_NOT_PROMOTED',
+            'lineage_ids':trade_story_lineage_ids(condition,lineages),'adoption_status':'NOT_FORMALLY_ADOPTED',
+            'cannot_prove':'不能证明这张条件委托唯一归属T120，也不能证明它导致了最后平仓。',
+        })
+    status_counts=Counter(item['status'] for item in condition_out)
+    if status_counts!=Counter({'CANCELED':9,'EXPIRED':1}) or any(item['is_triggered']!='否' for item in condition_out):
+        raise RuntimeError('TRADE_STORY_CONDITION_STATUS_RECONCILIATION_FAILED')
+    all_ids=[item['fact_id'] for item in object_records]
+    direct_ids=[item['fact_id'] for item in [*ordered_positions,*orders,*conditions]]
+    expanded_ids=[value for value in all_ids if value not in set(direct_ids)]
+    if len(direct_ids)!=18 or len(expanded_ids)!=154 or set(direct_ids)&set(expanded_ids) or set(direct_ids)|set(expanded_ids)!=set(all_ids):
+        raise RuntimeError('TRADE_STORY_COVERAGE_PARTITION_INVALID')
+    evidence_counts=Counter(item.get('evidence_status') for item in object_records)
+    if evidence_counts!=Counter({'DIRECT':50,'BOUNDED':102,'CANDIDATE':20}):
+        raise RuntimeError('TRADE_STORY_EVIDENCE_STATUS_COUNTS_MISMATCH')
+    if any(item.get('adoption_status')!='NOT_FORMALLY_ADOPTED' for item in object_records):
+        raise RuntimeError('TRADE_STORY_ADOPTION_STATUS_CHANGED')
+    peak=max(Decimal(value) for value in position_path)
+    plot_values=[Decimal(value) for value in position_path]
+    plot_x=[Decimal('5')+(Decimal('88')*Decimal(index)/Decimal(len(plot_values)-1)) for index in range(len(plot_values))]
+    plot_y=[decimal_text(Decimal('88')-(value/peak*Decimal('68'))) for value in plot_values]
+    plot_x_text=[decimal_text(value) for value in plot_x]
+    path='M '+plot_x_text[0]+' '+plot_y[0]
+    for index in range(1,len(plot_x)):
+        midpoint=decimal_text((plot_x[index-1]+plot_x[index])/Decimal('2'))
+        path+=' H '+midpoint+' V '+plot_y[index]+' H '+plot_x_text[index]
+    total_fee=sum((Decimal(step['fee_from_fills']['value']) for step in steps),Decimal('0'))
+    total_realized=sum((Decimal(step['source_realized_pnl']['value']) for step in steps),Decimal('0'))
+    if len({step['fee_from_fills']['currency'] for step in steps})!=1: raise RuntimeError('TRADE_STORY_FEE_CURRENCY_MISMATCH')
+    order_boundary_start=min((item.get('normalized_value') or {}).get('order_created_at') for item in orders)
+    order_boundary_end=max((item.get('normalized_value') or {}).get('order_updated_at') for item in orders)
+    position_boundary_start=min((item.get('normalized_value') or {}).get('action_start_time') for item in ordered_positions)
+    position_boundary_end=max((item.get('normalized_value') or {}).get('action_end_time') for item in ordered_positions)
+    condition_starts=[item['created_at'] for item in condition_out if item['created_at']!='未记录']
+    condition_ends=[item['terminal_at'] for item in condition_out if item['terminal_at']!='未记录']
+    position_fact_ids=[item['fact_id'] for item in ordered_positions]
+    order_fact_ids=[step['order_fact_id'] for step in steps]
+    fill_fact_ids=[fill['fact_id'] for step in steps for fill in step['fills']]
+    condition_fact_ids=[item['fact_id'] for item in condition_out]
+    add_position_fact_ids=[step['position_fact_id'] for step in steps if step['action_type']=='ADD_POSITION']
+    canceled_condition_ids=[item['fact_id'] for item in condition_out if item['status']=='CANCELED']
+    expired_condition_ids=[item['fact_id'] for item in condition_out if item['status']=='EXPIRED']
+    triggered_condition_ids=[item['fact_id'] for item in condition_out if item['is_triggered']=='是']
+    record_type_member_ids={
+        '事实记录':[item['fact_id'] for item in object_records if item['record_type']=='FACT_STATEMENT'],
+        '关系记录':[item['fact_id'] for item in object_records if item['record_type']=='RELATION_STATEMENT'],
+        '来源记录':[item['fact_id'] for item in object_records if item['record_type']=='LINEAGE_STATEMENT'],
+    }
+    evidence_member_ids={
+        '直接证据':[item['fact_id'] for item in object_records if item.get('evidence_status')=='DIRECT'],
+        '限定范围证据':[item['fact_id'] for item in object_records if item.get('evidence_status')=='BOUNDED'],
+        '候选关系':[item['fact_id'] for item in object_records if item.get('evidence_status')=='CANDIDATE'],
+    }
+    data_version_ref='payload.meta.fact_base_sha256'
+    order_time_boundary={'start':order_boundary_start,'end':order_boundary_end,'duration_seconds':trade_story_duration_seconds(order_boundary_start,order_boundary_end,'T120_ORDER_BOUNDARY'),'timezone_basis':'SOURCE_BEIJING_LOCAL_TIME','precision':'SECOND'}
+    position_time_boundary={'start':position_boundary_start,'end':position_boundary_end,'duration_seconds':trade_story_duration_seconds(position_boundary_start,position_boundary_end,'T120_POSITION_BOUNDARY'),'timezone_basis':'SOURCE_LOCAL_TIME_PRESERVED','original_timezone':'UNKNOWN','precision':'SECOND'}
+    condition_time_boundary={'start':min(condition_starts),'end':max(condition_ends),'duration_seconds':trade_story_duration_seconds(min(condition_starts),max(condition_ends),'T120_CONDITION_BOUNDARY'),'timezone_basis':'SOURCE_LOCAL_TIME_PRESERVED','original_timezone':'UNKNOWN','precision':'SECOND'}
+    position_points=[{'x':x,'y':y,'position':decimal_text(value)} for x,y,value in zip(plot_x_text,plot_y,plot_values)]
+    total_record_count=len(all_ids); total_fill_count=len(fill_fact_ids); total_position_count=len(position_fact_ids)
+    identity_summary='先开仓，随后加仓'+str(len(add_position_fact_ids))+'次，最后全部平仓。'
+    story={
+        'schema':'OBJECTIVE_TRADE_STORY_V1','object_id':object_id,'candidate_status':'NOT_FORMALLY_ADOPTED',
+        'identity':{
+            'display_name':'第120笔交易','symbol':'BTCUSDT','direction':'做空',
+            'position_cycle_id':(ordered_positions[0].get('normalized_value') or {}).get('position_cycle_id'),
+            'account_origin':'NORMAL_FUTURES','account_plain':'普通合约账户来源；当前记录没有账户号码',
+            'quantity_unit_status':'SOURCE_QUANTITY_UNIT_NOT_EXPLICIT',
+            'price_unit_status':'SOURCE_PRICE_UNIT_NOT_EXPLICIT_DISPLAYED_IN_BTCUSDT_PAIR_CONTEXT',
+            'formal_open_close_boundary_status':'CANDIDATE_DIRECT_ORDER_FILL_POSITION_CHAIN_NOT_FORMALLY_ADOPTED',
+            'open_boundary_fact_id':steps[0]['position_fact_id'],'close_boundary_fact_id':steps[-1]['position_fact_id'],
+            'summary':identity_summary,
+        },
+        'main_summary':{
+            'position_path':position_path,'step_count':len(steps),'order_count':len(order_fact_ids),'fill_count':len(fill_fact_ids),
+            'condition_count':len(condition_fact_ids),'add_position_count':len(add_position_fact_ids),'final_position':position_path[-1],'final_net_result_status':'尚未核定',
+            'fully_unfilled_order_count_in_current_sample':None,
+            'fully_unfilled_order_status_in_current_sample':'NOT_CAPTURED_CURRENT_172_RECORD_SCOPE',
+            'summary_definitions':{
+                'position_path':{'metric':'整笔仓位阶梯','value':position_path,'formula':'首步position_before + 每步position_after','denominator':'当前T120全部仓位动作','member_fact_ids':position_fact_ids,'filter':'按仓位连续性唯一链排列','data_version_ref':data_version_ref},
+                'step_count':{'metric':'仓位变化动作数','value':len(steps),'formula':'count(仓位动作事实)','denominator':'当前T120仓位动作事实','member_fact_ids':position_fact_ids,'filter':'每个仓位动作事实只计一次','data_version_ref':data_version_ref},
+                'order_count':{'metric':'委托数','value':len(order_fact_ids),'formula':'count(与仓位动作直接相连的委托事实)','denominator':'当前T120仓位链的直接委托事实','member_fact_ids':order_fact_ids,'filter':'每个委托事实只计一次','data_version_ref':data_version_ref},
+                'fill_count':{'metric':'成交明细数','value':len(fill_fact_ids),'formula':'count(全部直接委托的全部直接成交成员)','denominator':'当前T120直接ORDER_FILL成交成员','member_fact_ids':fill_fact_ids,'filter':'每个成交事实编号只计一次','data_version_ref':data_version_ref},
+                'condition_count':{'metric':'可能相关条件委托数','value':len(condition_fact_ids),'formula':'count(当前T120范围内条件委托事实)','denominator':'当前T120条件委托候选事实','member_fact_ids':condition_fact_ids,'filter':'保持候选身份，不升级为直接归属','data_version_ref':data_version_ref},
+                'add_position_count':{'metric':'加仓动作数','value':len(add_position_fact_ids),'formula':'count(action_type=ADD_POSITION的仓位动作事实)','denominator':'当前T120仓位动作事实','member_fact_ids':add_position_fact_ids,'filter':'只统计来源明确标为ADD_POSITION的仓位动作','data_version_ref':data_version_ref},
+                'final_position':{'metric':'最后仓位','value':position_path[-1],'formula':'最后一个仓位动作的position_after','denominator':'最后一个仓位动作','member_fact_ids':[position_fact_ids[-1]],'filter':'不跨来源时间口径重新排序','data_version_ref':data_version_ref},
+            },
+        },
+        'timeline_policy':{
+            'display_order':'仓位连续性顺序','absolute_time_alignment':'NOT_AVAILABLE_MIXED_TIME_BASES',
+            'plain':'几份资料的时间口径还没统一，所以主图只按仓位变化顺序讲述，不表示统一的精确时间比例。',
+            'overall_start_time':'UNKNOWN_UNIFIED_TIME','overall_end_time':'UNKNOWN_UNIFIED_TIME','overall_duration':'UNKNOWN_UNIFIED_TIME',
+            'order_time_boundary':order_time_boundary,
+            'position_record_time_boundary':position_time_boundary,
+            'condition_time_boundary':condition_time_boundary,
+            'summary_definitions':{
+                'order_time_boundary':{'metric':'委托记录时间范围','value':order_time_boundary,'formula':'min(全部直接委托order_created_at) → max(全部直接委托order_updated_at)，持续时间按同一北京时间口径相减','denominator':'当前T120全部直接委托事实','member_fact_ids':order_fact_ids,'filter':'不与仓位动作或条件单的未知时区时间混算','data_version_ref':data_version_ref},
+                'position_record_time_boundary':{'metric':'仓位动作记录时间范围','value':position_time_boundary,'formula':'min(全部仓位动作action_start_time) → max(全部仓位动作action_end_time)，持续时间按来源本地口径相减','denominator':'当前T120全部仓位动作事实','member_fact_ids':position_fact_ids,'filter':'保留原时区未知，不与委托北京时间混算','data_version_ref':data_version_ref},
+                'condition_time_boundary':{'metric':'条件委托记录时间范围','value':condition_time_boundary,'formula':'min(十张条件委托created_at) → max(十张条件委托terminal_at)，持续时间按来源本地口径相减','denominator':'当前T120十张条件委托候选事实','member_fact_ids':condition_fact_ids,'filter':'保持候选归属，不与委托北京时间混算','data_version_ref':data_version_ref},
+            },
+        },
+        'position_plot':{
+            'path':path,'points':position_points,
+            'peak':decimal_text(peak),'quantity_unit_status':'待核定',
+            'summary_definitions':{
+                'peak':{'metric':'仓位阶梯峰值','value':decimal_text(peak),'formula':'max(首步position_before与每个仓位动作position_after)','denominator':'当前T120完整仓位连续链','member_fact_ids':position_fact_ids,'filter':'数量单位保持来源未明确','data_version_ref':data_version_ref},
+                'points':{'metric':'仓位阶梯图全部点位','value':position_points,'formula':'x=5+序号×88÷(点数−1)；y=88−仓位÷峰值×68；position=首步position_before及每步position_after','denominator':'当前T120完整仓位连续链','member_fact_ids':position_fact_ids,'filter':'横向只表示仓位动作顺序，不表示精确时间间隔','data_version_ref':data_version_ref},
+                'path':{'metric':'仓位阶梯折线路径','value':path,'formula':'相邻点先水平走到中点，再垂直变化，再水平到下一点','denominator':'仓位阶梯图全部点位','member_fact_ids':position_fact_ids,'filter':'只有真实仓位动作形成跳点，未成交委托不得形成跳点','data_version_ref':data_version_ref},
+            },
+        },
+        'steps':steps,'conditions':condition_out,
+        'condition_summary':{
+            'canceled':len(canceled_condition_ids),'expired':len(expired_condition_ids),'triggered':len(triggered_condition_ids),
+            'relationship_status':'候选关系，尚未正式采用',
+            'summary_definitions':{
+                'canceled':{'metric':'已取消条件委托数','value':len(canceled_condition_ids),'formula':'count(status=CANCELED)','denominator':'当前T120的条件委托候选事实','member_fact_ids':canceled_condition_ids,'filter':'只统计status=CANCELED','data_version_ref':data_version_ref},
+                'expired':{'metric':'已过期条件委托数','value':len(expired_condition_ids),'formula':'count(status=EXPIRED)','denominator':'当前T120的条件委托候选事实','member_fact_ids':expired_condition_ids,'filter':'只统计status=EXPIRED','data_version_ref':data_version_ref},
+                'triggered':{'metric':'已证明触发条件委托数','value':len(triggered_condition_ids),'formula':'count(is_triggered=是)','denominator':'当前T120的条件委托候选事实','member_fact_ids':triggered_condition_ids,'filter':'只统计来源明确写为已触发的成员','data_version_ref':data_version_ref},
+            },
+        },
+        'money':{
+            'captured_fill_fees':{'value':decimal_text(total_fee),'currency':steps[0]['fee_from_fills']['currency'],'member_fact_ids':fill_fact_ids,'metric':str(total_fill_count)+'条成交记录手续费合计','formula':'sum('+str(total_fill_count)+'条成交记录fee)','denominator':'当前T120的'+str(total_fill_count)+'条直接成交成员','filter':'不重复相加'+str(total_position_count)+'条仓位动作中的同值','data_version_ref':'payload.meta.fact_base_sha256'},
+            'source_realized_pnl':{'value':decimal_text(total_realized),'currency':steps[0]['fee_from_fills']['currency'],'member_fact_ids':fill_fact_ids,'metric':'来源成交字段已实现盈亏合计','formula':'sum('+str(total_fill_count)+'条成交记录realized_pnl)','denominator':'当前T120的'+str(total_fill_count)+'条直接成交成员','filter':'来源字段合计，不冒充正式经济净结果','data_version_ref':'payload.meta.fact_base_sha256'},
+            'formal_net_result_status':'UNKNOWN_NOT_COMPUTED',
+            'plain_boundary':'手续费来自'+str(total_fill_count)+'条成交记录，'+str(total_position_count)+'条仓位动作中的同值只用于对账，没有再次相加；已实现盈亏只是来源成交字段，不能直接称为整笔正式净结果。',
+        },
+        'module_states':[
+            {'label':'开仓前完全未成交的尝试','status':'当前'+str(total_record_count)+'条同源样本未收录；历史核对材料另有相关记录，但不在当前事实底座中，本页不引用其数量','kind':'NOT_CAPTURED'},
+            {'label':'条件委托的修改、替换与覆盖关系','status':'当前记录无法确认相邻条件单是否属于修改或替换','kind':'UNKNOWN'},
+            {'label':'与交易有关的非交易资金动作','status':'当前'+str(total_record_count)+'条同源样本未收录','kind':'NOT_CAPTURED'},
+            {'label':'资金费、返佣及其他现金影响','status':'当前'+str(total_record_count)+'条同源样本未收录','kind':'NOT_CAPTURED'},
+            {'label':'共享、复制或尚未归属的对象','status':'放在独立对象核对，不能根据本页默认不存在','kind':'SEPARATE_OBJECT'},
+            {'label':'账户权益关键节点','status':'当前'+str(total_record_count)+'条同源样本无法确认','kind':'UNKNOWN'},
+            {'label':'持仓期间完整行情过程','status':'当前'+str(total_record_count)+'条同源样本无法确认','kind':'UNKNOWN'},
+            {'label':'最大曾浮盈和最大曾浮亏','status':'当前'+str(total_record_count)+'条同源样本无法确认','kind':'UNKNOWN'},
+            {'label':'实际杠杆、保证金、强平价与风险状态','status':'当前'+str(total_record_count)+'条同源样本无法确认','kind':'UNKNOWN'},
+            {'label':'相邻交易和反手关系','status':'放在独立对象核对，不能根据本页默认不存在','kind':'SEPARATE_OBJECT'},
+            {'label':'用户说明与人工复盘','status':'没有混入本页客观事实主线','kind':'SEPARATED'},
+            {'label':'人工智能或人工分析判断','status':'没有混入本页客观事实主线','kind':'SEPARATED'},
+        ],
+        'historical_boundary':{
+            'plain':'历史核对材料还保存过完全未成交委托、资金费和历史净结果，但它们不在本页'+str(total_record_count)+'条同源候选记录中；本页不引用未绑定到底层成员的历史数量或金额，也不会把它们无标记混入本页统计。',
+            'current_page_uses_historical_values':False,
+        },
+        'coverage':{
+            'formula':str(len(all_ids))+' = '+str(len(direct_ids))+' 直接显示 + '+str(len(expanded_ids))+' 展开后显示 + 0 明确未纳入',
+            'total':len(all_ids),'direct_count':len(direct_ids),'expanded_count':len(expanded_ids),'excluded_count':0,
+            'direct_ids':direct_ids,'expanded_ids':expanded_ids,'excluded':[],
+            'record_type_counts':{label:len(ids) for label,ids in record_type_member_ids.items()},
+            'evidence_status_counts':{label:len(ids) for label,ids in evidence_member_ids.items()},
+            'summary_definitions':{
+                'total':{'metric':'当前T120固定候选记录总数','value':len(all_ids),'formula':'count(当前T120全部唯一事实编号)','denominator':'当前T120固定候选记录','member_fact_ids':all_ids,'filter':'每个事实编号只计一次','data_version_ref':data_version_ref},
+                'direct_count':{'metric':'首层直接显示记录数','value':len(direct_ids),'formula':'count(全部仓位动作 + 直接相连委托 + 当前条件委托候选)','denominator':'当前T120首层业务事实','member_fact_ids':direct_ids,'filter':'只统计首层直接显示的业务事实','data_version_ref':data_version_ref},
+                'expanded_count':{'metric':'展开后显示记录数','value':len(expanded_ids),'formula':'总记录集合 − 首层直接显示集合 − 明确未纳入集合','denominator':'当前T120固定候选记录','member_fact_ids':expanded_ids,'filter':'事实编号不得与首层或未纳入集合重叠','data_version_ref':data_version_ref},
+                'excluded_count':{'metric':'明确未纳入记录数','value':0,'formula':'count(明确未纳入集合)','denominator':'当前T120固定候选记录审查范围','member_fact_ids':[],'filter':'当前没有明确未纳入成员','data_version_ref':data_version_ref},
+                'record_type_counts':{'metric':'记录类型数量分布','value':{label:len(ids) for label,ids in record_type_member_ids.items()},'formula':'按record_type分组计数','denominator':'当前T120全部固定候选记录','member_fact_ids':all_ids,'member_groups':record_type_member_ids,'filter':'每个事实编号恰好进入一个记录类型','data_version_ref':data_version_ref},
+                'evidence_status_counts':{'metric':'证据等级数量分布','value':{label:len(ids) for label,ids in evidence_member_ids.items()},'formula':'按evidence_status分组计数','denominator':'当前T120全部固定候选记录','member_fact_ids':all_ids,'member_groups':evidence_member_ids,'filter':'每个事实编号恰好进入一个证据等级','data_version_ref':data_version_ref},
+                'external_reference_count':{'metric':'分母外端点引用数','value':len(set(external_endpoint_ids)),'formula':'count(unique 条件关系外部端点事实编号)','denominator':'T120条件关系使用的外部端点引用','member_fact_ids':sorted(set(external_endpoint_ids)),'filter':'只作关系端点说明，不计入当前T120覆盖分母','data_version_ref':data_version_ref},
+            },
+            'absolute_history_boundary':'只证明当前已捕获的'+str(total_record_count)+'条固定候选记录内部完整，不证明交易所历史绝对没有遗漏。',
+        },
+        'external_reference_ids':sorted(set(external_endpoint_ids)),
+        'validation':{
+            'position_continuity':True,'order_fill_position_quantities_exact':True,
+            'fill_member_sets_exact':True,'fee_reconciliation_exact_without_double_counting':True,
+            'condition_relations_remain_candidate':True,'all_displayed_values_have_source_fields':True,
+        },
+    }
+    return story
+
+def validate_trade_story_reconciliation(story,records,object_id):
+    object_records=[item for item in records if item.get('navigation_object_id')==object_id]
+    facts=[item for item in object_records if item.get('record_type')=='FACT_STATEMENT']
+    relations=[item for item in object_records if item.get('record_type')=='RELATION_STATEMENT']
+    positions=[item for item in facts if (item.get('normalized_value') or {}).get('position_action_id')]
+    orders=[item for item in facts if (item.get('normalized_value') or {}).get('order_created_at')]
+    fills=[item for item in facts if (item.get('normalized_value') or {}).get('fill_id')]
+    conditions=[item for item in facts if (item.get('normalized_value') or {}).get('condition_record_id')]
+    by_fact={item['fact_id']:item for item in records}
+
+    def exact_members(definition,name,expected_ids,ordered=False):
+        actual=list(definition.get('member_fact_ids') or []); expected_ids=list(expected_ids)
+        if len(actual)!=len(set(actual)):
+            raise RuntimeError('TRADE_STORY_SUMMARY_MEMBER_DUPLICATED:'+name)
+        mismatch=actual!=expected_ids if ordered else set(actual)!=set(expected_ids)
+        if mismatch: raise RuntimeError('TRADE_STORY_SUMMARY_MEMBER_SET_MISMATCH:'+name)
+
+    position_ids={item['fact_id'] for item in positions}
+    position_order_relations=[
+        item for item in relations
+        if item.get('evidence_status')=='DIRECT'
+        and (item.get('relation') or {}).get('relation_type')=='ORDER_POSITION_ACTION'
+        and (item.get('relation') or {}).get('source_fact_id') in position_ids
+    ]
+    order_ids=[(item.get('relation') or {}).get('target_fact_id') for item in position_order_relations]
+    if len(order_ids)!=len(position_ids) or len(order_ids)!=len(set(order_ids)) or set(order_ids)!={item['fact_id'] for item in orders}:
+        raise RuntimeError('TRADE_STORY_MAIN_ORDER_MEMBER_SET_MISMATCH')
+    fill_relation_records=[
+        item for item in relations
+        if item.get('evidence_status')=='DIRECT'
+        and (item.get('relation') or {}).get('relation_type')=='ORDER_FILL'
+        and (item.get('relation') or {}).get('target_fact_id') in set(order_ids)
+    ]
+    fill_ids=[(item.get('relation') or {}).get('source_fact_id') for item in fill_relation_records]
+    if len(fill_ids)!=len(set(fill_ids)) or set(fill_ids)!={item['fact_id'] for item in fills}:
+        raise RuntimeError('TRADE_STORY_MAIN_FILL_MEMBER_SET_MISMATCH')
+    condition_ids=[item['fact_id'] for item in conditions]
+    ordered_position_ids=[step['position_fact_id'] for step in story['steps']]
+    if len(ordered_position_ids)!=len(set(ordered_position_ids)) or set(ordered_position_ids)!=position_ids:
+        raise RuntimeError('TRADE_STORY_MAIN_POSITION_MEMBER_SET_MISMATCH')
+    ordered_positions=[by_fact[fact_id] for fact_id in ordered_position_ids]
+    position_path=[decimal_text(trade_story_decimal(ordered_positions[0],'position_before','T120_VALIDATE_POSITION_PATH'))]
+    position_path.extend(decimal_text(trade_story_decimal(item,'position_after','T120_VALIDATE_POSITION_PATH')) for item in ordered_positions)
+    add_position_ids=[item['fact_id'] for item in ordered_positions if (item.get('normalized_value') or {}).get('action_type')=='ADD_POSITION']
+    main_definitions=story['main_summary']['summary_definitions']
+    exact_members(main_definitions['position_path'],'main.position_path',ordered_position_ids,True)
+    exact_members(main_definitions['step_count'],'main.step_count',ordered_position_ids,True)
+    exact_members(main_definitions['order_count'],'main.order_count',order_ids)
+    exact_members(main_definitions['fill_count'],'main.fill_count',fill_ids)
+    exact_members(main_definitions['condition_count'],'main.condition_count',condition_ids)
+    exact_members(main_definitions['add_position_count'],'main.add_position_count',add_position_ids)
+    exact_members(main_definitions['final_position'],'main.final_position',[ordered_position_ids[-1]],True)
+    main_expected={
+        'position_path':position_path,'step_count':len(ordered_position_ids),'order_count':len(order_ids),
+        'fill_count':len(fill_ids),'condition_count':len(condition_ids),'add_position_count':len(add_position_ids),
+        'final_position':position_path[-1],
+    }
+    if story['identity']['summary']!='先开仓，随后加仓'+str(len(add_position_ids))+'次，最后全部平仓。':
+        raise RuntimeError('TRADE_STORY_IDENTITY_SUMMARY_NOT_DERIVED')
+    for key,value in main_expected.items():
+        if canonical(story['main_summary'].get(key))!=canonical(value) or canonical(main_definitions[key]['value'])!=canonical(value):
+            raise RuntimeError('TRADE_STORY_MAIN_SUMMARY_RECOMPUTE_MISMATCH:'+key)
+
+    seen_step_fill_ids=[]
+    for step in story['steps']:
+        context='T120_VALIDATE_STEP_'+str(step['step'])
+        position=by_fact.get(step['position_fact_id']); order=by_fact.get(step['order_fact_id'])
+        if position not in positions or order not in orders: raise RuntimeError('TRADE_STORY_STEP_PRIMARY_MEMBER_INVALID:'+context)
+        position_order_matches=[
+            item for item in position_order_relations
+            if (item.get('relation') or {}).get('source_fact_id')==position['fact_id']
+            and (item.get('relation') or {}).get('target_fact_id')==order['fact_id']
+        ]
+        if [item['fact_id'] for item in position_order_matches]!=[step['position_order_relation_id']]:
+            raise RuntimeError('TRADE_STORY_STEP_POSITION_ORDER_MEMBER_MISMATCH:'+context)
+        expected_fill_relations=[item for item in fill_relation_records if (item.get('relation') or {}).get('target_fact_id')==order['fact_id']]
+        expected_step_fill_ids=[(item.get('relation') or {}).get('source_fact_id') for item in expected_fill_relations]
+        step_fill_ids=[item['fact_id'] for item in step['fills']]
+        if len(step_fill_ids)!=len(set(step_fill_ids)) or set(step_fill_ids)!=set(expected_step_fill_ids):
+            raise RuntimeError('TRADE_STORY_STEP_FILL_MEMBER_SET_MISMATCH:'+context)
+        chained_fills=order_fill_chain([by_fact[fact_id] for fact_id in expected_step_fill_ids],trade_story_decimal(position,'position_before',context),trade_story_decimal(position,'position_after',context),context)
+        chained_fill_ids=[item['fact_id'] for item in chained_fills]
+        if step_fill_ids!=chained_fill_ids: raise RuntimeError('TRADE_STORY_STEP_FILL_ORDER_MISMATCH:'+context)
+        if len(step['fill_relation_ids'])!=len(set(step['fill_relation_ids'])) or set(step['fill_relation_ids'])!={item['fact_id'] for item in expected_fill_relations}:
+            raise RuntimeError('TRADE_STORY_STEP_FILL_RELATION_SET_MISMATCH:'+context)
+        seen_step_fill_ids.extend(step_fill_ids)
+        before=trade_story_decimal(position,'position_before',context); after=trade_story_decimal(position,'position_after',context)
+        order_quantity=trade_story_decimal(order,'order_quantity',context)
+        executed=sum((trade_story_decimal(item,'quantity',context) for item in chained_fills),Decimal('0'))
+        unfilled=order_quantity-executed
+        weighted=sum((trade_story_decimal(item,'quantity',context)*trade_story_decimal(item,'price',context) for item in chained_fills),Decimal('0'))/executed
+        fee=sum((trade_story_decimal(item,'fee',context) for item in chained_fills),Decimal('0'))
+        realized=sum((trade_story_decimal(item,'realized_pnl',context) for item in chained_fills),Decimal('0'))
+        average_after=(chained_fills[-1].get('normalized_value') or {}).get('average_price_after')
+        average_after=str(average_after) if average_after not in (None,'') else 'NOT_APPLICABLE_POSITION_CLOSED'
+        recomputed={
+            'position_transition':decimal_text(before)+' → '+decimal_text(after),'fill_count':len(chained_fills),
+            'executed_quantity':decimal_text(executed),'unfilled_quantity':decimal_text(unfilled),
+            'filled_percent':decimal_text(executed/order_quantity*Decimal('100')),
+            'unfilled_percent':decimal_text(unfilled/order_quantity*Decimal('100')),
+            'weighted_fill_price':decimal_text(weighted),'fill_fee':decimal_text(fee),
+            'source_realized_pnl':decimal_text(realized),'holding_average_price_after':average_after,
+        }
+        fill_member_keys=('position_transition','fill_count','executed_quantity','weighted_fill_price','fill_fee','source_realized_pnl')
+        order_and_fill_keys=('unfilled_quantity','filled_percent','unfilled_percent')
+        for key in fill_member_keys: exact_members(step['summary_definitions'][key],context+'.'+key,chained_fill_ids,True)
+        for key in order_and_fill_keys: exact_members(step['summary_definitions'][key],context+'.'+key,[order['fact_id'],*chained_fill_ids],True)
+        exact_members(step['summary_definitions']['holding_average_price_after'],context+'.holding_average_price_after',[chained_fill_ids[-1]],True)
+        displayed={
+            'position_transition':step['position_before']+' → '+step['position_after'],'fill_count':step['fill_count'],
+            'executed_quantity':step['executed_quantity'],'unfilled_quantity':step['unfilled_quantity'],
+            'filled_percent':step['filled_percent'],'unfilled_percent':step['unfilled_percent'],
+            'weighted_fill_price':step['weighted_fill_price'],'fill_fee':step['fee_from_fills']['value'],
+            'source_realized_pnl':step['source_realized_pnl']['value'],'holding_average_price_after':step['holding_average_price_after'],
+        }
+        decimal_keys={'executed_quantity','unfilled_quantity','filled_percent','unfilled_percent','weighted_fill_price','fill_fee','source_realized_pnl'}
+        for key,value in recomputed.items():
+            if key in decimal_keys:
+                if Decimal(str(displayed[key]))!=Decimal(str(value)) or Decimal(str(step['summary_definitions'][key]['value']))!=Decimal(str(value)):
+                    raise RuntimeError('TRADE_STORY_STEP_SUMMARY_RECOMPUTE_MISMATCH:'+str(step['step'])+':'+key)
+            elif canonical(displayed[key])!=canonical(value) or canonical(step['summary_definitions'][key]['value'])!=canonical(value):
+                raise RuntimeError('TRADE_STORY_STEP_SUMMARY_RECOMPUTE_MISMATCH:'+str(step['step'])+':'+key)
+    if len(seen_step_fill_ids)!=len(set(seen_step_fill_ids)) or set(seen_step_fill_ids)!=set(fill_ids):
+        raise RuntimeError('TRADE_STORY_ALL_STEP_FILL_PARTITION_MISMATCH')
+
+    condition_expected={
+        'canceled':[item['fact_id'] for item in conditions if (item.get('normalized_value') or {}).get('status')=='CANCELED'],
+        'expired':[item['fact_id'] for item in conditions if (item.get('normalized_value') or {}).get('status')=='EXPIRED'],
+        'triggered':[item['fact_id'] for item in conditions if (item.get('normalized_value') or {}).get('is_triggered')=='是'],
+    }
+    if set(condition_expected['canceled'])&set(condition_expected['expired']) or set(condition_expected['canceled'])|set(condition_expected['expired'])!=set(condition_ids):
+        raise RuntimeError('TRADE_STORY_CONDITION_TERMINAL_PARTITION_MISMATCH')
+    for key,ids in condition_expected.items():
+        definition=story['condition_summary']['summary_definitions'][key]
+        exact_members(definition,'condition.'+key,ids)
+        if story['condition_summary'][key]!=len(ids) or definition['value']!=len(ids):
+            raise RuntimeError('TRADE_STORY_CONDITION_SUMMARY_RECOMPUTE_MISMATCH:'+key)
+
+    order_starts=[(item.get('normalized_value') or {}).get('order_created_at') for item in orders]
+    order_ends=[(item.get('normalized_value') or {}).get('order_updated_at') for item in orders]
+    position_starts=[(item.get('normalized_value') or {}).get('action_start_time') for item in positions]
+    position_ends=[(item.get('normalized_value') or {}).get('action_end_time') for item in positions]
+    condition_starts=[(item.get('normalized_value') or {}).get('created_at') for item in conditions]
+    condition_ends=[(item.get('normalized_value') or {}).get('terminal_at') for item in conditions]
+    time_expected={
+        'order_time_boundary':{'start':min(order_starts),'end':max(order_ends),'duration_seconds':trade_story_duration_seconds(min(order_starts),max(order_ends),'T120_VALIDATE_ORDER_BOUNDARY'),'timezone_basis':'SOURCE_BEIJING_LOCAL_TIME','precision':'SECOND'},
+        'position_record_time_boundary':{'start':min(position_starts),'end':max(position_ends),'duration_seconds':trade_story_duration_seconds(min(position_starts),max(position_ends),'T120_VALIDATE_POSITION_BOUNDARY'),'timezone_basis':'SOURCE_LOCAL_TIME_PRESERVED','original_timezone':'UNKNOWN','precision':'SECOND'},
+        'condition_time_boundary':{'start':min(condition_starts),'end':max(condition_ends),'duration_seconds':trade_story_duration_seconds(min(condition_starts),max(condition_ends),'T120_VALIDATE_CONDITION_BOUNDARY'),'timezone_basis':'SOURCE_LOCAL_TIME_PRESERVED','original_timezone':'UNKNOWN','precision':'SECOND'},
+    }
+    time_member_ids={'order_time_boundary':order_ids,'position_record_time_boundary':ordered_position_ids,'condition_time_boundary':condition_ids}
+    for key,value in time_expected.items():
+        exact_members(story['timeline_policy']['summary_definitions'][key],'timeline.'+key,time_member_ids[key])
+        if canonical(story['timeline_policy'][key])!=canonical(value) or canonical(story['timeline_policy']['summary_definitions'][key]['value'])!=canonical(value):
+            raise RuntimeError('TRADE_STORY_TIME_BOUNDARY_RECOMPUTE_MISMATCH:'+key)
+
+    plot_values=[Decimal(value) for value in position_path]; peak=max(plot_values)
+    plot_x=[Decimal('5')+(Decimal('88')*Decimal(index)/Decimal(len(plot_values)-1)) for index in range(len(plot_values))]
+    plot_x_text=[decimal_text(value) for value in plot_x]
+    plot_y=[decimal_text(Decimal('88')-(value/peak*Decimal('68'))) for value in plot_values]
+    plot_points=[{'x':x,'y':y,'position':decimal_text(value)} for x,y,value in zip(plot_x_text,plot_y,plot_values)]
+    plot_path='M '+plot_x_text[0]+' '+plot_y[0]
+    for index in range(1,len(plot_x)):
+        plot_path+=' H '+decimal_text((plot_x[index-1]+plot_x[index])/Decimal('2'))+' V '+plot_y[index]+' H '+plot_x_text[index]
+    plot_expected={'peak':decimal_text(peak),'points':plot_points,'path':plot_path}
+    for key,value in plot_expected.items():
+        exact_members(story['position_plot']['summary_definitions'][key],'position_plot.'+key,ordered_position_ids,True)
+        if canonical(story['position_plot'][key])!=canonical(value) or canonical(story['position_plot']['summary_definitions'][key]['value'])!=canonical(value):
+            raise RuntimeError('TRADE_STORY_POSITION_PLOT_RECOMPUTE_MISMATCH:'+key)
+
+    coverage=story['coverage']; all_ids=[item['fact_id'] for item in object_records]
+    direct_expected=[item['fact_id'] for item in [*ordered_positions,*orders,*conditions]]
+    expanded_expected=[fact_id for fact_id in all_ids if fact_id not in set(direct_expected)]
+    coverage_groups=[coverage['direct_ids'],coverage['expanded_ids'],[item['id'] for item in coverage['excluded']]]
+    if any(len(group)!=len(set(group)) for group in coverage_groups): raise RuntimeError('TRADE_STORY_COVERAGE_GROUP_HAS_DUPLICATES')
+    if any(set(coverage_groups[left])&set(coverage_groups[right]) for left in range(3) for right in range(left+1,3)):
+        raise RuntimeError('TRADE_STORY_COVERAGE_GROUPS_OVERLAP')
+    if set(coverage_groups[0])!=set(direct_expected) or set(coverage_groups[1])!=set(expanded_expected) or coverage_groups[2] or set().union(*(set(group) for group in coverage_groups))!=set(all_ids):
+        raise RuntimeError('TRADE_STORY_COVERAGE_PARTITION_NOT_EXACT')
+    if (coverage['total'],coverage['direct_count'],coverage['expanded_count'],coverage['excluded_count'])!=(len(all_ids),len(direct_expected),len(expanded_expected),0):
+        raise RuntimeError('TRADE_STORY_COVERAGE_FORMULA_FAILED')
+    coverage_definitions=coverage['summary_definitions']
+    for key,ids in {'total':all_ids,'direct_count':direct_expected,'expanded_count':expanded_expected,'excluded_count':[]}.items():
+        exact_members(coverage_definitions[key],'coverage.'+key,ids)
+        if coverage_definitions[key]['value']!=len(ids): raise RuntimeError('TRADE_STORY_COVERAGE_VALUE_RECOMPUTE_MISMATCH:'+key)
+    record_type_expected={
+        '事实记录':[item['fact_id'] for item in object_records if item.get('record_type')=='FACT_STATEMENT'],
+        '关系记录':[item['fact_id'] for item in object_records if item.get('record_type')=='RELATION_STATEMENT'],
+        '来源记录':[item['fact_id'] for item in object_records if item.get('record_type')=='LINEAGE_STATEMENT'],
+    }
+    evidence_expected={
+        '直接证据':[item['fact_id'] for item in object_records if item.get('evidence_status')=='DIRECT'],
+        '限定范围证据':[item['fact_id'] for item in object_records if item.get('evidence_status')=='BOUNDED'],
+        '候选关系':[item['fact_id'] for item in object_records if item.get('evidence_status')=='CANDIDATE'],
+    }
+    for key,expected_groups in {'record_type_counts':record_type_expected,'evidence_status_counts':evidence_expected}.items():
+        definition=coverage_definitions[key]; actual_groups=definition.get('member_groups') or {}
+        if set(actual_groups)!=set(expected_groups): raise RuntimeError('TRADE_STORY_COVERAGE_MEMBER_GROUP_LABEL_MISMATCH:'+key)
+        flattened=[]
+        for label,ids in expected_groups.items():
+            if list(actual_groups[label])!=list(ids): raise RuntimeError('TRADE_STORY_COVERAGE_MEMBER_GROUP_MISMATCH:'+key+':'+label)
+            if len(ids)!=len(set(ids)): raise RuntimeError('TRADE_STORY_COVERAGE_MEMBER_GROUP_DUPLICATED:'+key+':'+label)
+            flattened.extend(ids)
+        if len(flattened)!=len(set(flattened)) or set(flattened)!=set(all_ids): raise RuntimeError('TRADE_STORY_COVERAGE_MEMBER_GROUP_NOT_PARTITION:'+key)
+        expected_counts={label:len(ids) for label,ids in expected_groups.items()}
+        exact_members(definition,'coverage.'+key,all_ids)
+        if canonical(definition['value'])!=canonical(expected_counts) or canonical(coverage[key])!=canonical(expected_counts):
+            raise RuntimeError('TRADE_STORY_COVERAGE_GROUP_COUNT_MISMATCH:'+key)
+    external_expected=sorted(set(
+        (item.get('relation') or {}).get('target_fact_id') for item in relations
+        if (item.get('relation') or {}).get('relation_type')=='CONDITIONAL_ORDER'
+        and (item.get('relation') or {}).get('source_fact_id') in set(condition_ids)
+        and (item.get('relation') or {}).get('target_fact_id') not in set(all_ids)
+    ))
+    exact_members(coverage_definitions['external_reference_count'],'coverage.external_reference_count',external_expected,True)
+    if story['external_reference_ids']!=external_expected or coverage_definitions['external_reference_count']['value']!=len(external_expected):
+        raise RuntimeError('TRADE_STORY_EXTERNAL_REFERENCE_RECOMPUTE_MISMATCH')
+
+    for metric_key,field in (('captured_fill_fees','fee'),('source_realized_pnl','realized_pnl')):
+        metric=story['money'][metric_key]; exact_members(metric,'money.'+metric_key,fill_ids)
+        expected_value=decimal_text(sum((trade_story_decimal(by_fact[fact_id],field,'T120_VALIDATE_MONEY_'+metric_key) for fact_id in fill_ids),Decimal('0')))
+        currencies={str((by_fact[fact_id].get('normalized_value') or {}).get('fee_asset') or '') for fact_id in fill_ids}
+        if len(currencies)!=1 or '' in currencies or metric['currency']!=next(iter(currencies)) or Decimal(str(metric['value']))!=Decimal(str(expected_value)):
+            raise RuntimeError('TRADE_STORY_MONEY_RECOMPUTE_MISMATCH:'+metric_key)
+    return True
+
+def validate_trade_story(story,records,object_id):
+    expected=build_trade_story(records,object_id)
+    if canonical(story)!=canonical(expected): raise RuntimeError('TRADE_STORY_CONTENT_MISMATCH:'+object_id)
+    record_id_counts=Counter(item.get('fact_id') for item in records)
+    referenced_ids=[story['identity']['open_boundary_fact_id'],story['identity']['close_boundary_fact_id']]
+    for step in story['steps']:
+        referenced_ids.extend([step['position_fact_id'],step['order_fact_id'],step['position_order_relation_id']])
+        referenced_ids.extend(step['fill_relation_ids']); referenced_ids.extend(step['lineage_ids'])
+        for fill in step['fills']:
+            referenced_ids.append(fill['fact_id']); referenced_ids.extend(fill['lineage_ids'])
+        for definition in step.get('summary_definitions',{}).values(): referenced_ids.extend(definition.get('member_fact_ids') or [])
+    for condition in story['conditions']:
+        referenced_ids.extend([condition['fact_id'],condition['relation_id'],condition['target_reference_fact_id']])
+        referenced_ids.extend(condition['lineage_ids'])
+    referenced_ids.extend(story['coverage']['direct_ids']); referenced_ids.extend(story['coverage']['expanded_ids'])
+    referenced_ids.extend(item['id'] for item in story['coverage']['excluded'])
+    referenced_ids.extend(story['external_reference_ids'])
+    for definitions in (story['timeline_policy'].get('summary_definitions',{}),story['position_plot'].get('summary_definitions',{})):
+        for definition in definitions.values(): referenced_ids.extend(definition.get('member_fact_ids') or [])
+    for metric in story['money'].values():
+        if isinstance(metric,dict): referenced_ids.extend(metric.get('member_fact_ids') or [])
+    missing=[fact_id for fact_id in referenced_ids if record_id_counts.get(fact_id)!=1]
+    if missing: raise RuntimeError('TRADE_STORY_REFERENCE_NOT_EXACTLY_ONE_RECORD:'+str(missing[0]))
+    required_definition_fields={'metric','value','formula','denominator','member_fact_ids','filter','data_version_ref'}
+    definition_groups=[
+        story['main_summary']['summary_definitions'],story['condition_summary']['summary_definitions'],
+        story['coverage']['summary_definitions'],story['timeline_policy']['summary_definitions'],
+        story['position_plot']['summary_definitions'],
+    ]
+    definition_groups.extend(step['summary_definitions'] for step in story['steps'])
+    definition_groups.append({key:value for key,value in story['money'].items() if isinstance(value,dict) and 'member_fact_ids' in value})
+    for group in definition_groups:
+        for name,definition in group.items():
+            if not required_definition_fields.issubset(definition):
+                raise RuntimeError('TRADE_STORY_SUMMARY_DEFINITION_INCOMPLETE:'+name)
+            if definition['data_version_ref']!='payload.meta.fact_base_sha256':
+                raise RuntimeError('TRADE_STORY_SUMMARY_DATA_VERSION_REFERENCE_INVALID:'+name)
+            if len(definition['member_fact_ids'])!=len(set(definition['member_fact_ids'])):
+                raise RuntimeError('TRADE_STORY_SUMMARY_MEMBER_DUPLICATED:'+name)
+            if any(record_id_counts.get(fact_id)!=1 for fact_id in definition['member_fact_ids']):
+                raise RuntimeError('TRADE_STORY_SUMMARY_MEMBER_NOT_EXACTLY_ONE_RECORD:'+name)
+    for key in ('position_path','step_count','order_count','fill_count','condition_count','add_position_count','final_position'):
+        if canonical(story['main_summary']['summary_definitions'][key]['value'])!=canonical(story['main_summary'][key]):
+            raise RuntimeError('TRADE_STORY_MAIN_SUMMARY_DEFINITION_VALUE_MISMATCH:'+key)
+    for key in ('canceled','expired','triggered'):
+        if story['condition_summary']['summary_definitions'][key]['value']!=story['condition_summary'][key]:
+            raise RuntimeError('TRADE_STORY_CONDITION_SUMMARY_DEFINITION_VALUE_MISMATCH:'+key)
+    for key in ('total','direct_count','expanded_count','excluded_count','record_type_counts','evidence_status_counts'):
+        if canonical(story['coverage']['summary_definitions'][key]['value'])!=canonical(story['coverage'][key]):
+            raise RuntimeError('TRADE_STORY_COVERAGE_SUMMARY_DEFINITION_VALUE_MISMATCH:'+key)
+    for step in story['steps']:
+        comparisons={
+            'position_transition':step['position_before']+' → '+step['position_after'],
+            'fill_count':step['fill_count'],'executed_quantity':step['executed_quantity'],
+            'unfilled_quantity':step['unfilled_quantity'],'filled_percent':step['filled_percent'],
+            'unfilled_percent':step['unfilled_percent'],'weighted_fill_price':step['weighted_fill_price'],
+            'fill_fee':step['fee_from_fills']['value'],'source_realized_pnl':step['source_realized_pnl']['value'],
+            'holding_average_price_after':step['holding_average_price_after'],
+        }
+        for key,value in comparisons.items():
+            if canonical(step['summary_definitions'][key]['value'])!=canonical(value):
+                raise RuntimeError('TRADE_STORY_STEP_SUMMARY_DEFINITION_VALUE_MISMATCH:'+str(step['step'])+':'+key)
+    coverage=story['coverage']
+    groups=[coverage['direct_ids'],coverage['expanded_ids'],[item['id'] for item in coverage['excluded']]]
+    if any(set(groups[left])&set(groups[right]) for left in range(3) for right in range(left+1,3)):
+        raise RuntimeError('TRADE_STORY_COVERAGE_GROUPS_OVERLAP')
+    if coverage['total']!=coverage['direct_count']+coverage['expanded_count']+coverage['excluded_count']:
+        raise RuntimeError('TRADE_STORY_COVERAGE_FORMULA_FAILED')
+    validate_trade_story_reconciliation(story,records,object_id)
+    return {'object_id':object_id,'record_count':coverage['total'],'coverage_exact':True,'semantic_checks_passed':True}
+
+def user_visual_generation_identity(config_path,settings):
+    config_path=Path(config_path).resolve(); program_path=Path(__file__).resolve()
+    basis=settings.get('common_basis') or {}
+    basis_path=config_path.parent/basis.get('file','') if basis.get('file') else None
+    if not basis_path or not basis_path.exists(): raise RuntimeError('USER_VISUAL_COMMON_BASIS_MISSING')
+    if basis_path.stat().st_size!=basis.get('bytes') or sha_file(basis_path)!=basis.get('sha256'):
+        raise RuntimeError('USER_VISUAL_COMMON_BASIS_IDENTITY_MISMATCH')
+    return {
+        'program':{'file':program_path.name,'bytes':program_path.stat().st_size,'sha256':sha_file(program_path)},
+        'config':{'file':config_path.name,'bytes':config_path.stat().st_size,'sha256':sha_file(config_path)},
+        'common_basis':basis,
+        'quality_receipt':{
+            'file':settings.get('quality_receipt_file','13_自动质量检查与内容指纹候选.json'),
+            'binding_status':'由最终质量回执在页面稳定后记录页面、程序和配置的真实身份',
+        },
+    }
+
+def build_user_visual_payload(records,fact_path,contract_id,generation_identity=None):
     grouped=defaultdict(list)
     for record in records: grouped[record['navigation_object_id']].append(record)
     objects=[]
@@ -4713,16 +5758,18 @@ def build_user_visual_payload(records,fact_path,contract_id):
         group=sorted(grouped[object_id],key=lambda item:item['stable_display_sequence'])
         times=[item.get('event_time_original') or (item.get('time') or {}).get('beijing_time') for item in group]
         times=[value for value in times if value]
-        records_out=[visual_record(item) for item in group]
+        records_out=[visual_record(item,include_technical=object_id=='T120') for item in group]
         counts=Counter(item['record_type'] for item in group)
         classes=sorted({str(item.get('object_class') or '') for item in group if item.get('object_class')})
         symbols=sorted({str(item.get('symbol') or '') for item in group if item.get('symbol')})
+        story=build_trade_story(records,object_id)
         objects.append({
             'id':object_id,'label':VISUAL_OBJECT_LABELS.get(object_id,object_id),
             'object_classes':classes,'symbols':symbols,'record_count':len(group),
             'attention_count':sum(1 for item in records_out if item['attention']),
             'time_start':min(times) if times else '时间未记录','time_end':max(times) if times else '时间未记录',
             'counts':{key:counts.get(key,0) for key in VISUAL_RECORD_LABELS},'records':records_out,
+            **({'story':story} if story else {}),
         })
     counts=Counter(record['record_type'] for record in records)
     return {
@@ -4736,11 +5783,12 @@ def build_user_visual_payload(records,fact_path,contract_id):
             'record_type_counts':{key:counts.get(key,0) for key in VISUAL_RECORD_LABELS},
             'default_object_id':'T120' if 'T120' in grouped else objects[0]['id'],
             'page_size':25,'user_understandability_status':'WAITING_FOR_USER_ACTUAL_REVIEW',
+            'generation_identity':generation_identity or {'status':'NOT_BOUND'},
         },
         'objects':objects,
     }
 
-def validate_user_visual_payload(payload,records,fact_path):
+def validate_user_visual_payload(payload,records,fact_path,generation_identity=None):
     actual=[item['id'] for obj in payload['objects'] for item in obj['records']]
     expected=[item['fact_id'] for item in records]
     if len(actual)!=len(expected) or len(actual)!=len(set(actual)) or set(actual)!=set(expected):
@@ -4766,67 +5814,256 @@ def validate_user_visual_payload(payload,records,fact_path):
             expected_hash=hashlib.sha256(canonical(source_by_id[item['id']]).encode('utf-8')).hexdigest()
             if item.get('canonical_record_sha256')!=expected_hash:
                 raise RuntimeError('USER_VISUAL_CANONICAL_RECORD_BINDING_MISMATCH:'+item['id'])
+        if obj['id']=='T120': validate_trade_story(obj.get('story'),records,'T120')
+    if generation_identity is not None and canonical(payload['meta'].get('generation_identity'))!=canonical(generation_identity):
+        raise RuntimeError('USER_VISUAL_GENERATION_IDENTITY_MISMATCH')
+    rebuilt=build_user_visual_payload(records,fact_path,payload['meta'].get('contract_id'),generation_identity)
+    if canonical(payload)!=canonical(rebuilt):
+        raise RuntimeError('USER_VISUAL_PAYLOAD_CANONICAL_REBUILD_MISMATCH')
     return {
         'record_count':len(actual),'object_count':len(actual_objects),'record_id_coverage_exact':True,
         'record_id_unique':True,'record_type_counts_exact':True,'fact_base_identity_exact':True,
-        'canonical_record_binding_exact':True,
+        'canonical_record_binding_exact':True,'t120_trade_story_semantics_exact':True,
+        'generation_identity_exact':generation_identity is not None,
         'user_understandability_status':payload['meta']['user_understandability_status'],
         'user_understandability_cannot_be_self_passed':True,
     }
+
+# 用户页面先呈现一笔交易，再按需追溯依据；失败旧稿保留在Git历史中。
+USER_VISUAL_TEMPLATE_REJECTED_20260922='''<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>T120 单笔交易核对样页</title>
+<style>
+:root{color-scheme:light dark;--paper:#f7f7f3;--surface:#ffffff;--ink:#172b28;--soft:#51615d;--rule:#d8dfda;--green:#176d55;--green-pale:#e6f1e9;--amber:#80542c;--amber-pale:#fbf0df;--track:#e8ece8}
+@media(prefers-color-scheme:dark){:root{--paper:#111916;--surface:#1b2621;--ink:#eef5ef;--soft:#adbbb1;--rule:#3a4b40;--green:#92d7b2;--green-pale:#274238;--amber:#efc18b;--amber-pale:#423526;--track:#33423a}}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}main{max-width:980px;margin:0 auto;padding:28px 22px 80px}header{border-bottom:1px solid var(--rule);padding:4px 0 28px}.overline{color:var(--green);font-size:14px;font-weight:700}h1{font-size:clamp(31px,5vw,46px);letter-spacing:-.03em;line-height:1.2;margin:10px 0 12px}header p{margin:0;color:var(--soft)}.headline{display:flex;flex-wrap:wrap;gap:13px;align-items:center;margin-top:22px}.headline strong{font-size:21px;font-weight:700}.state{background:var(--green-pale);color:var(--green);padding:5px 11px;border-radius:7px;font-size:14px;font-weight:700}.sample{font-size:13px;color:var(--soft);margin-top:14px}section{margin-top:34px}h2{font-size:23px;line-height:1.35;margin:0 0 7px}.section-note{color:var(--soft);margin:0 0 18px}.movement{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}.move{display:grid;grid-template-columns:155px minmax(0,1fr) 130px;gap:18px;align-items:center;padding:19px 22px;border-top:1px solid var(--rule)}.move:first-child{border-top:0}.move-name{font-weight:700;font-size:18px}.move-name small{display:block;color:var(--soft);font-size:13px;font-weight:400;margin-top:2px}.amount{display:flex;align-items:center;gap:12px}.bar{height:12px;flex:1;background:var(--track);border-radius:99px;overflow:hidden}.bar span{display:block;height:100%;background:var(--green);border-radius:99px}.amount b{min-width:58px;text-align:right;font-size:18px;font-variant-numeric:tabular-nums}.price{text-align:right;color:var(--soft);font-size:14px}.price b{display:block;color:var(--ink);font-size:17px;font-variant-numeric:tabular-nums}.row-more{grid-column:1/-1;margin-top:-5px}.row-more summary,.more summary{cursor:pointer;color:var(--green);font-size:14px;font-weight:600}.row-more p{margin:9px 0 0;color:var(--soft);font-size:14px}.highlight{color:var(--amber)!important;background:var(--amber-pale);padding:9px 11px;border-radius:7px}.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.block{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:22px}.block h2{font-size:21px}.block p{margin:8px 0 0}.muted{color:var(--soft)}.notready{font-size:18px;font-weight:650}.more{margin-top:15px}.condition-list{list-style:none;padding:0;margin:12px 0 0}.condition-list li{border-top:1px solid var(--rule);padding:9px 0;font-size:14px}.condition-list li:first-child{border-top:0}.facts{background:var(--surface);border:1px solid var(--rule);border-radius:14px}.facts div{display:grid;grid-template-columns:190px 1fr;gap:14px;padding:15px 21px;border-top:1px solid var(--rule)}.facts div:first-child{border-top:0}.facts dt{font-weight:650}.facts dd{margin:0;color:var(--soft)}footer{border-top:1px solid var(--rule);margin-top:36px;padding-top:18px;color:var(--soft);font-size:14px}.source{margin-top:11px}.source summary{cursor:pointer;color:var(--green);font-weight:600;font-size:14px}.source p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:var(--soft);margin:6px 0}.empty{color:var(--soft);padding:16px 0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:760px){main{padding:18px 14px 55px}.two{grid-template-columns:1fr}.move{grid-template-columns:1fr 110px;gap:7px 13px;padding:16px}.move-name{grid-column:1/-1}.price{align-self:end}.row-more{margin-top:5px}.facts div{grid-template-columns:1fr;gap:3px}}
+@media(max-width:380px){h1{font-size:30px}.move{grid-template-columns:1fr}.price{text-align:left}.amount b{min-width:48px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+.movement .move{display:block;padding:24px;border-top:1px solid var(--rule)}
+.move-head{display:flex;align-items:baseline;gap:12px;margin-bottom:15px}
+.step-number{display:inline-flex;align-items:center;justify-content:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--green);color:var(--surface);font-weight:800}
+.move-head strong{font-size:21px}
+.flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;align-items:stretch}
+.flow-cell{position:relative;min-width:0;border:2px solid var(--rule);border-radius:12px;padding:13px 15px 15px;background:var(--surface)}
+.flow-cell:first-child{border-color:var(--green)}
+.flow-cell:nth-child(3){background:var(--green-pale);border-color:var(--green)}
+.flow-cell:nth-child(-n+2)::after{content:'→';position:absolute;right:-27px;top:50%;transform:translateY(-50%);font-size:27px;font-weight:800;color:var(--green)}
+.flow-label{display:block;color:var(--soft);font-size:13px;font-weight:700}
+.flow-cell strong{display:block;margin-top:4px;font-size:clamp(19px,2.3vw,25px);line-height:1.3;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.flow-note{display:block;color:var(--soft);font-size:13px;margin-top:5px}
+.flow-cell.partial{border-color:var(--amber);background:var(--amber-pale)}
+.flow-branch{margin-top:10px;border-left:3px solid var(--amber);padding:7px 10px;background:var(--surface);color:var(--amber);font-weight:700;font-size:14px}
+.movement .row-more{margin-top:13px}
+@media(max-width:760px){.movement .move{padding:20px 16px}.flow{gap:25px;grid-template-columns:1fr}.flow-cell:nth-child(-n+2)::after{content:'↓';right:50%;top:auto;bottom:-27px;transform:translateX(50%)}.flow-cell strong{font-size:23px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="overline">单笔交易 · T120</div><h1>BTCUSDT 做空</h1><p>看每一次挂单，究竟成交了多少，仓位才怎样变化。</p><div class="headline"><strong id="summary"></strong><span class="state" id="closeState"></span></div><div class="sample">这是待你核对的一笔交易样例，不代表136笔已经做好。数量单位仍待核定。</div></header>
+<section aria-labelledby="movementTitle"><h2 id="movementTitle">这笔交易是怎么发生的</h2><p class="section-note">顺着箭头看：挂单 → 实际成交 → 空头仓位。挂单数量和成交数量不一定相同。</p><div class="movement" id="movement"></div></section>
+<section class="two" aria-label="其他交易内容"><div class="block"><h2>开仓前的尝试</h2><p class="notready">现在还不能判断</p><p class="muted">现有资料只证明下面的成交，不能判断此前有没有挂单、撤单或改价。</p></div><div class="block"><h2>止盈和止损</h2><p class="notready">还不能确认属于这笔</p><p class="muted" id="conditionText"></p><details class="more"><summary>查看可能相关的止盈止损单</summary><ul class="condition-list" id="conditionList"></ul></details></div></section>
+<section aria-labelledby="resultTitle"><h2 id="resultTitle">结果和资金</h2><p class="section-note">仓位结束了，不等于已经算清赚亏。没有核对过的金额不会写成零。</p><dl class="facts"><div><dt>最后仓位</dt><dd id="finalPosition"></dd></div><div><dt>整笔盈亏与手续费</dt><dd>还没核对清楚，暂不填数字</dd></div><div><dt>账户资金与保证金</dt><dd>目前没有可靠数字可填</dd></div><div><dt>持仓中最多浮盈、最多浮亏与强平风险</dt><dd>目前没有可靠数字可填</dd></div></dl></section>
+<footer><div>本页只把当前能直接连起来的事实画出来。缺口仍是缺口，可能相关的止盈止损没有被当成已确认事实。</div><details class="more"><summary>怎么核对这页依据</summary><p>点开仓位步骤或条件单，可看到它对应的原记录和事实编号。若页面内容与你的交易记忆不一致，可指出具体一步；原记录只作核对依据，不替你作判断。</p></details><div id="boundary"></div></footer>
+</main>
+__LOCAL_DATA_SCRIPTS__
+<script>
+(()=>{'use strict';
+const manifest=window.__TRADING_REVIEW_VISUAL_MANIFEST__,loaded=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
+if(!manifest||loaded.length!==manifest.chunks.length)throw new Error('本地数据不完整，请把页面与旁边的数据文件放在同一目录');
+const loadedByFile=new Map(loaded.map(x=>[x.file,x]));
+if(loadedByFile.size!==loaded.length)throw new Error('本地数据重复');
+const objects=manifest.objects.map(o=>({...o,records:o.chunk_files.flatMap(name=>{const part=loadedByFile.get(name);if(!part||part.object_id!==o.id)throw new Error('本地数据归属不一致');return part.records})}));
+if(objects.reduce((n,o)=>n+o.records.length,0)!==manifest.meta.record_count)throw new Error('本地记录数不一致');
+const obj=objects.find(o=>o.id==='T120');if(!obj)throw new Error('T120样本缺失');
+const facts=obj.records.filter(r=>r.type==='FACT_STATEMENT'),relations=obj.records.filter(r=>r.type==='RELATION_STATEMENT'),byFact=new Map(facts.map(r=>[r.id,r]));
+const positions=facts.filter(r=>r.summary.includes('仓位动作：')),conditions=facts.filter(r=>r.summary.includes('条件委托：'));
+if(positions.length!==4)throw new Error('T120仓位步骤与已核对样本不一致');
+const value=(r,label)=>(r.details.find(d=>d.label===label)||{}).value||'';
+function el(tag,cls,txt){const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n}
+function source(r){const box=el('details','source'),where=r.source.file+' · '+(r.source.table||'未记表名')+' · '+(r.source.row??r.source.locator??'未记行号');box.append(el('summary','', '查看原记录'),el('p','',where+'\\n事实编号：'+r.id+'\\n能够证明：'+(r.can_prove||'仅限原记录内容')+'\\n不能证明：'+(r.cannot_prove||'不能超出原记录')));return box}
+const max=Math.max(...positions.map(p=>Number(value(p,'操作后仓位'))));
+const movement=document.getElementById('movement');let added=0;
+positions.forEach((p,i)=>{const action=value(p,'操作类型');if(action==='加仓')added++;
+const name=action==='加仓'?'第'+added+'次加仓':action==='首次开仓'?'首次开仓':action==='全部平仓'?'全部平仓':action;
+const after=value(p,'操作后仓位'),before=value(p,'操作前仓位'),price=value(p,'加权成交价');
+const row=el('div','move'),head=el('div','move-head'),number=el('span','step-number',String(i+1));head.append(number,el('strong','',name));
+const flow=el('div','flow'),orderCell=el('div','flow-cell'),fillCell=el('div','flow-cell'),positionCell=el('div','flow-cell');
+const more=el('details','row-more'),summary=el('summary','', '查看这一步的委托、分次成交和原记录');more.append(summary,source(p));
+const link=relations.find(r=>r.relation&&r.relation.type==='ORDER_POSITION_ACTION'&&r.evidence==='直接证据'&&r.relation.source_fact===p.id);
+const order=link&&byFact.get(link.relation.target_fact);
+if(!order)throw new Error('缺少直接对应的委托，不能画这一步');
+const qty=value(order,'委托数量'),filled=value(order,'已成交数量'),state=value(order,'当前状态'),side=value(order,'买卖方向');
+if(!qty||!filled||!side||!before||!after)throw new Error('这一行的委托、成交或仓位数量不完整');
+orderCell.append(el('span','flow-label','挂出的委托'),el('strong','',side+' '+qty));
+fillCell.append(el('span','flow-label','实际成交'),el('strong','',side+' '+filled));
+positionCell.append(el('span','flow-label','空头仓位'),el('strong','',before+' → '+after));
+if(price)positionCell.append(el('span','flow-note','记录的成交价 '+price));
+if(state==='已取消'){fillCell.classList.add('partial');fillCell.append(el('div','flow-branch','尚未成交的部分后来取消；已成交部分照常计入仓位。'));flow.append(orderCell,fillCell,positionCell)}
+else{fillCell.append(el('span','flow-note','委托最终状态：'+state));flow.append(orderCell,fillCell,positionCell)}
+more.append(el('p','', '委托最终状态：'+state+'。'),source(order));
+const fillLinks=relations.filter(r=>r.relation&&r.relation.type==='ORDER_FILL'&&r.evidence==='直接证据'&&r.relation.target_fact===order.id);
+const fills=fillLinks.map(r=>byFact.get(r.relation.source_fact)).filter(Boolean);
+const fillDetails=el('details','more');fillDetails.append(el('summary','', '查看同一张委托的 '+fills.length+' 条分次成交'));
+fills.forEach(f=>{const item=el('p','',f.summary.replace(/^BTCUSDT成交：/,''));item.append(source(f));fillDetails.append(item)});more.append(fillDetails);
+row.append(head,flow,more);movement.append(row)});
+const start=value(positions[0],'操作后仓位'),peak=String(max),end=value(positions[positions.length-1],'操作后仓位');
+document.getElementById('summary').textContent='空头仓位从 0 增到 '+peak+'，最后回到 '+end;
+document.getElementById('closeState').textContent=end==='0'?'仓位已归零':'尚未归零';
+document.getElementById('finalPosition').textContent=end==='0'?'从 '+value(positions[positions.length-1],'操作前仓位')+' 到 0；这只说明仓位归零，不代表盈亏已核定。':'最后记录为 '+end+'；本页不推断是否已经平仓。';
+document.getElementById('conditionText').textContent='找到 '+conditions.length+' 条可能相关的止盈止损记录，但还不能确认就是这笔交易的。';
+const conditionList=document.getElementById('conditionList');conditions.forEach(c=>{const li=el('li','',c.summary.replace(/^BTCUSDT条件委托：/,''));li.append(source(c));conditionList.append(li)});
+document.getElementById('boundary').textContent='几份原记录的时间尚未核对到同一时区。这页只按仓位记录原有顺序排列，不猜各来源之间的先后。';
+})();
+</script>
+</body></html>
+'''
 
 USER_VISUAL_TEMPLATE='''<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>客观交易链｜用户可视化核对测试版</title>
+<title>单笔交易发生过程｜用户核对候选页</title>
 <style>
-:root{color-scheme:light dark;--bg:#f4f6f3;--panel:#fff;--ink:#18231d;--muted:#68736c;--line:#d9e0da;--accent:#126b4f;--on-accent:#fff;--accent2:#dcefe7;--warn:#9b4b15;--warnbg:#fff1e4;--shadow:0 14px 36px rgba(23,43,32,.08)}
-@media(prefers-color-scheme:dark){:root{--bg:#111713;--panel:#18201b;--ink:#eef6f0;--muted:#a9b7ae;--line:#344139;--accent:#77d1ad;--on-accent:#0b241a;--accent2:#203e32;--warn:#ffb77e;--warnbg:#3b281c;--shadow:0 14px 36px rgba(0,0,0,.28)}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.shell{max-width:1180px;margin:auto;padding:28px 20px 70px}.hero,.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}.hero{padding:28px;background:linear-gradient(135deg,var(--panel),var(--accent2))}.eyebrow{font-size:13px;font-weight:750;letter-spacing:.08em;color:var(--accent)}h1{font-size:clamp(28px,5vw,48px);line-height:1.15;margin:8px 0 14px;max-width:780px}.lead{font-size:18px;max-width:860px;margin:0}.guide{margin-top:18px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.guide ol{margin:6px 0 0;padding-left:22px}.boundary{margin-top:12px;border-left:5px solid var(--warn);background:var(--warnbg);padding:12px 15px;border-radius:10px;color:var(--ink)}.control{margin:20px 0;padding:18px 20px;display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:16px;align-items:end}.control label{display:block;font-weight:750;margin-bottom:7px}select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);font:inherit}.scope{font-size:14px;color:var(--muted);text-align:right}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 20px}.metric{padding:15px 17px;background:var(--panel);border:1px solid var(--line);border-radius:16px}.metric strong{display:block;font-size:24px}.metric span{color:var(--muted);font-size:13px}.tabs{display:flex;gap:8px;overflow:auto;padding:7px;background:var(--panel);border:1px solid var(--line);border-radius:15px;position:sticky;top:8px;z-index:3}.tab{border:0;background:transparent;color:var(--muted);padding:10px 15px;border-radius:10px;font:inherit;font-weight:750;white-space:nowrap;cursor:pointer}.tab[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}.section-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin:25px 2px 14px}.section-head h2{margin:0;font-size:25px}.section-head p{margin:0;color:var(--muted)}.cards{display:grid;gap:13px}.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:17px 18px;box-shadow:0 6px 20px rgba(23,43,32,.045)}.card.attention{border-left:5px solid var(--warn)}.card-top{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;background:var(--accent2);color:var(--accent);font-size:12px;font-weight:800}.time{color:var(--muted);font-size:13px;text-align:right}.card h3{font-size:18px;line-height:1.45;margin:11px 0}.proof{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.proof div{padding:10px 12px;border-radius:11px;background:var(--bg);font-size:14px}.proof strong{display:block;margin-bottom:3px}.warn{margin-top:11px;padding:9px 11px;background:var(--warnbg);color:var(--ink);border-radius:10px;font-size:14px}.relation{margin-top:10px;padding:10px 12px;border:1px dashed var(--accent);border-radius:11px;color:var(--accent);font-weight:700}.details{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.detail{font-size:13px;border:1px solid var(--line);padding:5px 8px;border-radius:8px}.source{margin-top:12px}details summary{cursor:pointer;color:var(--accent);font-weight:700}details p{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--muted);font-size:13px}.pager{display:flex;justify-content:center;align-items:center;gap:12px;margin:20px}.pager button{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 13px;border-radius:10px;font:inherit;cursor:pointer}.pager button:disabled{opacity:.35;cursor:not-allowed}.empty{padding:35px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:17px}.integrity{margin-top:30px;padding:18px 20px;color:var(--muted);font-size:14px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:760px){.shell{padding:14px 12px 50px}.hero{padding:21px}.control{grid-template-columns:1fr}.scope{text-align:left}.metrics{grid-template-columns:1fr 1fr}.proof{grid-template-columns:1fr}.card-top{display:block}.time{text-align:left;margin-top:5px}.section-head{display:block}.section-head p{margin-top:4px}}
-@media(max-width:380px){.metrics{grid-template-columns:1fr}.tab{padding:9px 11px}.card{padding:15px}.lead{font-size:16px}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+:root{--bg:#f4f1ea;--paper:#fffdf8;--ink:#16211f;--muted:#5e6b67;--line:#d8d4ca;--deep:#173f37;--green:#1f775f;--green2:#dff1e8;--blue:#275e9a;--blue2:#e7f0fa;--orange:#9a5a17;--orange2:#fff0d8;--red:#9b3b31;--red2:#fde9e5;--gray:#ece9e1;--shadow:0 12px 34px rgba(30,49,44,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}button,a,summary{font:inherit}main{max-width:1160px;margin:0 auto;padding:24px 24px 88px}.hero{background:linear-gradient(135deg,#123a32,#1d6554);color:#fff;border-radius:24px;padding:30px 34px;box-shadow:var(--shadow)}.hero-top{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}.eyebrow{font-size:14px;letter-spacing:.08em;font-weight:800;color:#bce8d8}.badge{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.36);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:750;background:rgba(255,255,255,.1)}h1{font-size:clamp(32px,5vw,56px);line-height:1.14;letter-spacing:-.035em;margin:14px 0 8px}.hero-sub{font-size:clamp(17px,2vw,21px);margin:0;color:#e1f3ed}.hero-story{margin-top:24px;background:#fff;color:var(--ink);border-radius:18px;padding:20px 22px}.hero-story strong{display:block;font-size:clamp(21px,3vw,30px);line-height:1.35}.hero-story p{margin:7px 0 0;color:var(--muted)}.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}.quick div{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 14px}.quick small{display:block;color:#c7e6dc}.quick b{display:block;font-size:19px;margin-top:2px;font-variant-numeric:tabular-nums}.hero-warning{margin-top:14px;font-size:14px;color:#dceee8}.section{margin-top:26px;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:var(--shadow)}.section-head{display:flex;gap:18px;justify-content:space-between;align-items:flex-start;margin-bottom:18px}.section h2{font-size:clamp(23px,3vw,31px);line-height:1.25;margin:0}.section-head p,.section-note{margin:6px 0 0;color:var(--muted)}.plain-tag{flex:none;background:var(--green2);color:var(--deep);border-radius:999px;padding:6px 11px;font-weight:750;font-size:13px}.chart-wrap{border:1px solid var(--line);border-radius:17px;padding:18px;background:#fff}.chart-note{display:flex;gap:14px;justify-content:space-between;align-items:center;color:var(--muted);font-size:14px;margin-bottom:8px}.chart-note strong{color:var(--ink)}#positionChart{display:block;width:100%;height:auto;min-height:330px}.chart-axis{stroke:#d7dcd7;stroke-width:.45}.chart-path{fill:none;stroke:var(--green);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}.chart-point{fill:#fff;stroke:var(--green);stroke-width:1.5}.chart-value{font-size:4.2px;font-weight:800;fill:var(--deep);text-anchor:middle}.chart-label{font-size:3.2px;fill:var(--muted);text-anchor:middle}.position-mobile{display:none}.step-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.step-link{display:block;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:13px;padding:11px 12px;background:#fff}.step-link b{display:block}.step-link span{display:block;color:var(--muted);font-size:13px;margin-top:2px}.step-link:hover,.step-link:focus-visible{outline:3px solid #b9d8cf;border-color:var(--green)}.story-steps{display:grid;gap:18px}.step-card{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}.step-title{display:flex;gap:14px;align-items:center;padding:18px 20px;background:#f7f7f2}.step-number{display:inline-grid;place-items:center;width:38px;height:38px;flex:none;border-radius:50%;background:var(--deep);color:#fff;font-weight:900}.step-title h3{margin:0;font-size:22px;line-height:1.25}.step-title p{margin:3px 0 0;color:var(--muted);font-size:14px}.flow{display:grid;grid-template-columns:1fr 42px 1fr 42px 1fr;align-items:stretch;padding:20px}.flow-arrow{display:grid;place-items:center;color:var(--green);font-size:29px;font-weight:900}.flow-box{border:2px solid var(--line);border-radius:15px;padding:15px;min-width:0}.flow-box.order{border-color:#a9bfd7;background:var(--blue2)}.flow-box.fill{border-color:#a9cfbf;background:var(--green2)}.flow-box.position{border-color:#d8bb91;background:var(--orange2)}.flow-box small{display:block;color:var(--muted);font-weight:750}.flow-box strong{display:block;font-size:clamp(21px,2.6vw,29px);line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.flow-box p{margin:6px 0 0;color:var(--muted);font-size:14px}.fill-meter{height:11px;background:#d8e2de;border-radius:99px;overflow:hidden;margin-top:12px}.fill-meter span{display:block;height:100%;background:var(--green);border-radius:99px}.remainder{margin:0 20px 20px;border-left:5px solid var(--orange);background:var(--orange2);padding:12px 15px;border-radius:8px;color:#67400f;font-weight:700}.step-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:0 20px 20px}.step-facts div{border:1px solid var(--line);border-radius:12px;padding:11px 13px}.step-facts small{display:block;color:var(--muted)}.step-facts b{font-variant-numeric:tabular-nums}.details-area{border-top:1px solid var(--line);padding:15px 20px}.details-area>details+details{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px}summary{cursor:pointer;color:var(--deep);font-weight:800}.details-copy{color:var(--muted);margin:10px 0 0}.fill-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.fill-item{border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fcfbf6}.fill-item b{display:block}.fill-item span{display:block;color:var(--muted);font-size:13px;margin-top:2px}.condition-banner{border-left:5px solid var(--orange);background:var(--orange2);padding:15px 17px;border-radius:10px;margin-bottom:16px}.condition-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.condition-summary div{border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center}.condition-summary strong{display:block;font-size:25px}.condition-summary span{color:var(--muted);font-size:13px}.condition-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.condition-card{border:1px solid var(--line);border-radius:13px;padding:13px}.condition-card header{display:flex;gap:10px;justify-content:space-between}.condition-card h3{font-size:17px;margin:0}.condition-card .status{flex:none;font-size:12px;background:var(--gray);border-radius:999px;padding:4px 8px}.condition-card p{margin:7px 0 0;color:var(--muted);font-size:14px}.money-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.money-card{border:1px solid var(--line);border-radius:15px;padding:16px}.money-card small{display:block;color:var(--muted)}.money-card strong{display:block;font-size:24px;margin-top:3px;font-variant-numeric:tabular-nums}.money-card.unknown{background:var(--red2);border-color:#e9bcb5}.money-boundary{margin:14px 0 0;color:var(--muted)}.state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.state-card{display:flex;gap:11px;border:1px solid var(--line);border-radius:13px;padding:13px}.state-icon{display:grid;place-items:center;flex:none;width:31px;height:31px;border-radius:50%;background:var(--gray);font-weight:900}.state-card b{display:block}.state-card p{margin:2px 0 0;color:var(--muted);font-size:14px}.history{border:1px dashed #bca77f;background:#fffaf0;border-radius:14px;padding:15px}.coverage-line{font-size:22px;font-weight:850;color:var(--deep)}.coverage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:15px 0}.coverage-grid div{border:1px solid var(--line);border-radius:13px;padding:13px}.coverage-grid strong{display:block;font-size:24px}.coverage-grid span{color:var(--muted);font-size:13px}.record-directory{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.record-list{display:grid;gap:8px;margin-top:10px}.record{border:1px solid var(--line);border-radius:11px;padding:10px 12px}.record summary{display:flex;gap:8px;justify-content:space-between;align-items:flex-start}.record-title{font-weight:750;color:var(--ink)}.record-kind{flex:none;color:var(--muted);font-size:12px}.record-body{margin-top:9px;color:var(--muted);font-size:14px}.record-body p{margin:6px 0}.record-tech{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f1ec;color:#2d3935;border-radius:8px;padding:10px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:360px;overflow:auto}.external-ref{margin-top:12px;color:var(--muted)}.build-boundary{margin-top:24px;padding:17px 19px;background:#edeae2;border-radius:14px;color:var(--muted);font-size:14px}.build-boundary strong{color:var(--ink)}.fatal{max-width:720px;margin:60px auto;background:#fff;border:2px solid var(--red);padding:24px;border-radius:15px}.fatal h1{font-size:28px;color:var(--red)}
+@media(max-width:820px){main{padding:14px 13px 56px}.hero{padding:23px 20px;border-radius:18px}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}.section{padding:20px 16px;border-radius:17px}.desktop-chart{display:none}.position-mobile{display:grid;gap:0}.position-mobile .point{display:grid;grid-template-columns:42px 1fr;gap:12px;min-height:78px}.position-mobile .rail{position:relative;display:flex;justify-content:center}.position-mobile .rail::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:#b8d8cd}.position-mobile .point:first-child .rail::before{top:24px}.position-mobile .point:last-child .rail::before{bottom:calc(100% - 24px)}.position-mobile .dot{position:relative;z-index:1;margin-top:15px;width:22px;height:22px;border:5px solid var(--green);background:#fff;border-radius:50%}.position-mobile .copy{padding:10px 0 15px}.position-mobile .copy b{font-size:22px}.position-mobile .copy span{display:block;color:var(--muted);font-size:14px}.step-links{grid-template-columns:repeat(2,minmax(0,1fr))}.flow{grid-template-columns:1fr;padding:16px;gap:9px}.flow-arrow{transform:rotate(90deg);height:24px}.step-facts{grid-template-columns:1fr 1fr;padding:0 16px 16px}.details-area{padding:14px 16px}.fill-list,.condition-list,.money-grid,.state-grid{grid-template-columns:1fr}.coverage-grid{grid-template-columns:1fr}.section-head{display:block}.plain-tag{display:inline-flex;margin-top:10px}}
+.quick{grid-template-columns:repeat(5,minmax(0,1fr))}.hero details summary{color:#e1f3ed}.identity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.identity-card{border:1px solid var(--line);border-radius:13px;padding:13px}.identity-card small{display:block;color:var(--muted)}.identity-card b{display:block;margin-top:2px;overflow-wrap:anywhere}.boundary-note{margin:14px 0 0;border-left:5px solid var(--orange);background:var(--orange2);padding:12px 15px;border-radius:8px;color:#67400f}.formula-box{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:13px}.formula-box p{margin:4px 0}.money-members{display:grid;gap:6px;margin-top:10px;max-height:320px;overflow:auto}.money-member{border-bottom:1px solid var(--line);padding:6px 0;font-size:13px;color:var(--muted)}
+.record,.record summary,.record-title,.record-kind,.record-body p,.build-boundary{min-width:0;overflow-wrap:anywhere}
+@media(max-width:820px){.quick{grid-template-columns:repeat(2,minmax(0,1fr))}.record summary{display:block}.record-kind{display:block;margin-top:4px}.identity-grid{grid-template-columns:1fr}}
+@media(max-width:380px){h1{font-size:34px}.quick,.step-links,.step-facts{grid-template-columns:1fr}.section{padding:17px 13px}.hero-story{padding:16px}.flow-box strong{font-size:22px}}
 </style>
 </head>
 <body>
-<main class="shell">
-<section class="hero"><div class="eyebrow">第一工作包 · 可视化核对页</div><h1>不看表格，按一笔交易的过程来看</h1><p class="lead" id="identity"></p><div class="guide"><strong>怎么核对</strong><ol><li>先选择一笔交易或一个对象。</li><li>先看“交易过程”，再看“未知与冲突”。</li><li>发现不对时，记下卡片底部的事实编号告诉我们。</li></ol></div><div class="boundary" id="boundary"></div></section>
-<section class="panel control"><div><label for="objectSelect">选择要查看的交易或对象</label><select id="objectSelect"></select></div><div class="scope" id="scope"></div></section>
-<section class="metrics" id="metrics" aria-label="当前对象概况"></section>
-<nav class="tabs" aria-label="查看方式" role="tablist">
-<button class="tab" id="tab-events" role="tab" aria-controls="reviewPanel" aria-selected="true" data-tab="events">交易过程</button><button class="tab" id="tab-relations" role="tab" aria-controls="reviewPanel" aria-selected="false" data-tab="relations">关系连接</button><button class="tab" id="tab-attention" role="tab" aria-controls="reviewPanel" aria-selected="false" data-tab="attention">未知与冲突</button><button class="tab" id="tab-sources" role="tab" aria-controls="reviewPanel" aria-selected="false" data-tab="sources">来源依据</button>
-</nav>
-<section id="reviewPanel" role="tabpanel" aria-labelledby="tab-events"><div class="section-head"><div><h2 id="sectionTitle"></h2><p id="sectionHint"></p></div><p id="resultCount" aria-live="polite"></p></div><div id="cards" class="cards"></div><div id="pager" class="pager"></div></section>
-<section class="panel integrity" id="integrity"></section>
+<main id="app">
+<header class="hero">
+  <div class="hero-top"><div><div class="eyebrow">一笔交易，从开始到结束</div><h1 id="tradeTitle">正在读取交易</h1><p class="hero-sub" id="tradeSubtitle"></p></div><span class="badge">● 待用户核对 · 尚未正式采用</span></div>
+  <div class="hero-story"><strong id="heroStory"></strong><p id="heroBoundary"></p></div>
+  <div class="quick" id="quickFacts"></div>
+  <div class="hero-warning">本页只按已核对的仓位变化顺序讲述，不把不同时间口径强行拼成一条精确时间轴。</div>
+</header>
+<section class="section" aria-labelledby="identityHeading">
+  <div class="section-head"><div><h2 id="identityHeading">先把这页的身份、单位和时间说清</h2><p>这些边界决定页面里的数字能怎样理解；不知道的不会被补成确定答案。</p></div><span class="plain-tag">先认身份，再看过程</span></div>
+  <div class="identity-grid" id="identityGrid"></div>
+  <div class="boundary-note" id="overallTimeBoundary"></div>
+</section>
+<section class="section" aria-labelledby="positionHeading">
+  <div class="section-head"><div><h2 id="positionHeading">第一眼先看仓位怎么变化</h2><p>纵向高度按真实仓位数量比例绘制；横向只代表第几步，不代表精确时间间隔。</p></div><span class="plain-tag">有成交才会改变仓位</span></div>
+  <div class="chart-wrap">
+    <div class="chart-note"><span>空头仓位变化</span><strong id="positionPathText"></strong></div>
+    <div class="desktop-chart"><svg id="positionChart" viewBox="0 0 100 100" role="img" aria-labelledby="chartTitle chartDesc"><title id="chartTitle">仓位阶梯图</title><desc id="chartDesc">正在读取仓位变化。</desc></svg></div>
+    <div class="position-mobile" id="positionMobile" aria-label="手机端仓位变化"></div>
+    <nav class="step-links" id="stepLinks" aria-label="跳到每一步"></nav>
+  </div>
+</section>
+<section class="section" aria-labelledby="stepsHeading">
+  <div class="section-head"><div><h2 id="stepsHeading">交易过程</h2><p>每一步都分清：想成交多少、实际成交多少、仓位最后变成多少。</p></div><span class="plain-tag">委托 ≠ 成交</span></div>
+  <div class="story-steps" id="storySteps"></div>
+</section>
+<section class="section" aria-labelledby="conditionHeading">
+  <div class="section-head"><div><h2 id="conditionHeading">止盈止损发生了什么</h2><p>条件单本身有记录，但与这笔交易的归属仍是候选关系。</p></div><span class="plain-tag">不能当成最后平仓原因</span></div>
+  <div class="condition-banner" id="conditionBanner">正在核对可能相关的条件单。</div>
+  <div class="condition-summary" id="conditionSummary"></div>
+  <details><summary id="conditionDetailsSummary">展开查看条件单</summary><div class="condition-list" id="conditionList"></div></details>
+</section>
+<section class="section" aria-labelledby="moneyHeading">
+  <div class="section-head"><div><h2 id="moneyHeading">这笔交易的钱，目前能核对到哪里</h2><p>来源记录中的金额可以显示，但不会冒充已经算清的整笔净结果。</p></div><span class="plain-tag">未知不会填成0</span></div>
+  <div class="money-grid" id="moneyGrid"></div><p class="money-boundary" id="moneyBoundary"></p>
+</section>
+<section class="section" aria-labelledby="limitHeading">
+  <div class="section-head"><div><h2 id="limitHeading">还有哪些内容没有在本页算清</h2><p>“没有收录”“目前未知”“放在其他对象核对”是不同状态。</p></div><span class="plain-tag">缺口仍然保留</span></div>
+  <div class="state-grid" id="moduleStates"></div>
+  <div class="history" id="historicalBoundary"></div>
+</section>
+<section class="section" aria-labelledby="evidenceHeading">
+  <div class="section-head"><div><h2 id="evidenceHeading">这页有没有漏掉当前样本资料</h2><p>先看合计；需要查证时，再展开每一条记录和原始技术内容。</p></div><span class="plain-tag" id="coverageTag">正在核对记录去向</span></div>
+  <div class="coverage-line" id="coverageFormula"></div><div class="coverage-grid" id="coverageGrid"></div>
+  <details class="record-directory"><summary id="directRecordsSummary">查看首层直接显示的记录</summary><div class="record-list" id="directRecords"></div></details>
+  <details class="record-directory"><summary id="expandedRecordsSummary">查看向下展开才能看到的记录</summary><div class="record-list" id="expandedRecords"></div></details>
+  <details class="record-directory"><summary id="excludedRecordsSummary">查看本页明确未纳入的记录</summary><div class="record-list" id="excludedRecords"></div></details>
+  <div class="external-ref" id="externalReference"></div>
+</section>
+<section class="section" aria-labelledby="guideHeading">
+  <div class="section-head"><div><h2 id="guideHeading">怎么核对这页依据</h2><p id="guideCopy">先看仓位变化和交易过程；如果某个数字、委托或条件单与你的记忆不一致，再展开对应一步，点“查看原记录”核对来源。</p></div><span class="plain-tag">先看过程，再查依据</span></div>
+  <p class="section-note">原记录只说明当前证据能证明什么；未知、候选关系和不同时间口径仍然保留，不会被页面自动补成确定事实。</p>
+</section>
+<footer class="build-boundary" id="buildBoundary"></footer>
 </main>
 __LOCAL_DATA_SCRIPTS__
 <script>
 (()=>{'use strict';
-const manifest=window.__TRADING_REVIEW_VISUAL_MANIFEST__,loaded=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
-if(!manifest||loaded.length!==manifest.chunks.length)throw new Error('用户核对版的数据文件不完整');
-const loadedByFile=new Map(loaded.map(x=>[x.file,x]));if(loadedByFile.size!==loaded.length)throw new Error('用户核对版存在重复数据文件');
-const data={meta:manifest.meta,objects:manifest.objects.map(o=>({...o,records:o.chunk_files.flatMap(name=>{const part=loadedByFile.get(name);if(!part||part.object_id!==o.id)throw new Error('用户核对版数据顺序或归属不一致');return part.records})}))};
-if(data.objects.reduce((n,o)=>n+o.records.length,0)!==data.meta.record_count)throw new Error('用户核对版记录数不一致');
-const byId=new Map(data.objects.map(o=>[o.id,o]));const reduceMotion=Boolean(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-const select=document.getElementById('objectSelect'),cards=document.getElementById('cards'),pager=document.getElementById('pager');let current=data.meta.default_object_id,tab='events',page=1;
-const labels={events:['交易过程','按时间和固定展示顺序查看事实事件。'],relations:['关系连接','查看委托、成交、仓位或资金之间怎样相连。'],attention:['未知、候选与冲突','这些内容必须保留不确定性，不能被写成已确定事实。'],sources:['来源依据','查看每条记录来自哪个文件、哪张表或哪一行。']};
-function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n}
-function filtered(obj){if(tab==='events')return obj.records.filter(r=>r.type==='FACT_STATEMENT');if(tab==='relations')return obj.records.filter(r=>r.type==='RELATION_STATEMENT');if(tab==='sources')return obj.records.filter(r=>r.type==='LINEAGE_STATEMENT');return obj.records.filter(r=>r.attention)}
-function metric(value,label){const n=el('div','metric');n.append(el('strong','',String(value)),el('span','',label));return n}
-function renderMetrics(obj){const n=document.getElementById('metrics');n.replaceChildren(metric(obj.record_count,'全部记录'),metric(obj.counts.FACT_STATEMENT,'事实事件'),metric(obj.counts.RELATION_STATEMENT,'关系连接'),metric(obj.attention_count,'需要特别留意'))}
-function selectTab(next){tab=next;page=1;document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===tab)));document.getElementById('reviewPanel').setAttribute('aria-labelledby','tab-'+tab);render()}
-function card(record){const n=el('article','card'+(record.attention?' attention':''));const top=el('div','card-top');top.append(el('span','badge',record.type_label+' · '+record.evidence),el('span','time',record.time));n.append(top,el('h3','',record.summary));const proof=el('div','proof'),yes=el('div'),no=el('div');yes.append(el('strong','', '现在能证明'),document.createTextNode(record.can_prove||'尚无额外说明'));no.append(el('strong','', '不能当成什么'),document.createTextNode(record.cannot_prove||'不得超出当前证据范围'));proof.append(yes,no);n.append(proof);
-if(record.relation){const r=el('div','relation',(record.relation.source||'来源对象不明')+'  →  '+(record.relation.target||'目标对象不明'));n.append(r)}
-if(record.attention_text)n.append(el('div','warn','需要保留：'+record.attention_text));if(record.details.length){const d=el('div','details');record.details.forEach(x=>d.append(el('span','detail',x.label+'：'+x.value)));n.append(d)}
-const source=el('details','source'),summary=el('summary','', '展开看来源和技术编号'),p=el('p','');p.textContent='\u4e8b\u5b9e\u7f16\u53f7\uff1a'+record.id+'\\n\u6765\u6e90\uff1a'+record.source.file+'\uff5c'+(record.source.table||'\u8868\u540d\u672a\u8bb0\u5f55')+'\uff5c\u884c '+(record.source.row??record.source.locator??'\u672a\u8bb0\u5f55')+'\\n\u8def\u5f84\uff1a'+record.source.path;source.append(summary,p);n.append(source);return n}
-function movePage(delta){page+=delta;render();window.scrollTo({top:document.querySelector('.tabs').offsetTop,behavior:reduceMotion?'auto':'smooth'})}
-function render(){const obj=byId.get(current),items=filtered(obj),size=data.meta.page_size,pages=Math.max(1,Math.ceil(items.length/size));if(page>pages)page=pages;document.getElementById('sectionTitle').textContent=labels[tab][0];document.getElementById('sectionHint').textContent=labels[tab][1];document.getElementById('resultCount').textContent='共 '+items.length+' 条';cards.replaceChildren();const slice=items.slice((page-1)*size,page*size);if(!slice.length)cards.append(el('div','empty','这个对象在当前分类中没有记录。'));else slice.forEach(r=>cards.append(card(r)));pager.replaceChildren();const prev=el('button','', '上一页'),next=el('button','', '下一页');prev.disabled=page===1;next.disabled=page===pages;prev.onclick=()=>movePage(-1);next.onclick=()=>movePage(1);pager.append(prev,el('span','',page+' / '+pages),next);renderMetrics(obj);document.getElementById('scope').textContent=obj.time_start+' → '+obj.time_end}
-data.objects.forEach(o=>{const option=el('option','',o.label+' · '+o.record_count+'条');option.value=o.id;select.append(option)});select.value=current;select.onchange=()=>{current=select.value;if(current==='T087_METHOD'&&tab==='events')selectTab('attention');else{page=1;render()}};document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>selectTab(button.dataset.tab)));
-document.getElementById('identity').textContent=data.meta.identity;document.getElementById('boundary').textContent=data.meta.boundary;document.getElementById('integrity').textContent='完整性核对：本页包含 '+data.meta.record_count+' 条记录、'+data.meta.object_count+' 个导航对象；每条都保留事实编号，可回到 '+data.meta.fact_base_file+'。用户是否真正看懂，仍必须由用户本人实际查看后确认，程序不能自己宣布通过。';render();
+const manifest=window.__TRADING_REVIEW_VISUAL_MANIFEST__,chunks=window.__TRADING_REVIEW_VISUAL_CHUNKS__||[];
+function fail(message){const app=document.getElementById('app');app.className='fatal';app.replaceChildren();const title=document.createElement('h1'),copy=document.createElement('p');title.textContent='这页暂时不能可靠显示';copy.textContent=message;app.append(title,copy);throw new Error(message)}
+if(!manifest||chunks.length!==manifest.chunks.length)fail('页面旁边的数据文件不完整，请不要依据残缺页面核对。');
+const chunkMap=new Map(chunks.map(item=>[item.file,item]));if(chunkMap.size!==chunks.length)fail('页面旁边出现重复数据文件。');
+chunks.forEach((part,index)=>{const meta=manifest.chunks[index],records=part.records||[],lastRecord=records.length?records[records.length-1]:null;if(!meta||part.global_index!==index+1||part.file!==meta.file||part.object_id!==meta.object_id||part.object_position!==meta.object_position||part.chunk_index!==meta.chunk_index||part.chunk_count!==meta.chunk_count||records.length!==meta.record_count||(records[0]&&records[0].id!==meta.first_fact_id)||(lastRecord&&lastRecord.id!==meta.last_fact_id))fail('页面旁边的数据分块顺序、数量或首尾记录不一致。')});
+const ownedChunkFiles=[];manifest.objects.forEach((object,objectIndex)=>{if(!object.chunk_files||!object.chunk_files.length)fail('页面对象没有对应数据分块。');object.chunk_files.forEach((name,chunkIndex)=>{const part=chunkMap.get(name);if(!part||part.object_id!==object.id||part.object_position!==objectIndex+1||part.chunk_index!==chunkIndex+1||part.chunk_count!==object.chunk_files.length)fail('页面数据的顺序或归属不一致。');ownedChunkFiles.push(name)})});if(new Set(ownedChunkFiles).size!==ownedChunkFiles.length||ownedChunkFiles.length!==chunks.length||chunks.some(part=>!ownedChunkFiles.includes(part.file)))fail('页面数据分块没有逐一归属到唯一对象。');
+const objects=manifest.objects.map(object=>({...object,records:object.chunk_files.flatMap(name=>chunkMap.get(name).records)}));
+const objectMap=new Map(objects.map(object=>[object.id,object])),object=objectMap.get('T120');if(!object||!object.story)fail('第120笔交易的完整故事模型缺失。');
+const story=object.story,allRecords=objects.flatMap(item=>item.records),recordMap=new Map(allRecords.map(record=>[record.id,record]));
+if(allRecords.length!==manifest.meta.record_count||recordMap.size!==allRecords.length)fail('页面记录数量或编号不一致。');
+const cnStatus={FILLED:'全部成交',CANCELED:'已取消',EXPIRED:'已过期',DIRECT:'直接证据',BOUNDED:'限定范围证据',CANDIDATE:'候选证据',NOT_FORMALLY_ADOPTED:'尚未正式采用'};
+const cnSide={SELL:'卖出',BUY:'买回'};const cnKind={FACT_STATEMENT:'事实记录',RELATION_STATEMENT:'关系记录',LINEAGE_STATEMENT:'来源记录'};
+function el(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node}
+function uniq(values){return Array.from(new Set(values.filter(Boolean)))}
+function technicalText(record){return JSON.stringify(record.technical||{提示:'该外部引用只提供简要定位，没有并入T120技术原文'},null,2)}
+function recordNode(id,externalEndpoint=false){const record=recordMap.get(id),box=el('details','record');if(!record)fail('页面引用的依据记录缺失：'+id);
+ const summary=el('summary'),title=el('span','record-title',record.summary||'原记录'),kind=el('span','record-kind',(cnKind[record.type]||record.type)+' · '+(cnStatus[record.evidence]||record.evidence));summary.append(title,kind);const body=el('div','record-body');if(externalEndpoint)body.append(el('p','boundary-note','这是外部端点，只说明候选关系指向，不属于'+story.object_id+'的'+story.coverage.total+'条分母。'));body.append(el('p','', '事实编号：'+record.id),el('p','', '来源：'+record.source.file+'｜'+(record.source.table||'表名未记')+'｜'+(record.source.row??record.source.locator??'位置未记')),el('p','', '现在能证明：'+(record.can_prove||'只限原记录内容')),el('p','', '不能证明：'+(record.cannot_prove||'不能超出当前证据范围')));const raw=el('details');raw.append(el('summary','', '查看原始值、规范值、单位和时间口径'),el('pre','record-tech',technicalText(record)));body.append(raw);box.append(summary,body);return box}
+function appendEvidence(container,ids,label){const box=el('details');box.append(el('summary','',label));const list=el('div','record-list');uniq(ids).forEach(id=>list.append(recordNode(id)));box.append(list);container.append(box)}
+function appendSummaryDefinitions(container,definitions,label){const details=el('details');details.append(el('summary','',label));const box=el('div','formula-box');Object.values(definitions||{}).forEach(definition=>{const item=el('div','summary-audit');item.append(el('p','', '指标：'+definition.metric+'｜结果：'+(typeof definition.value==='object'?JSON.stringify(definition.value):definition.value)),el('p','', '公式：'+definition.formula),el('p','', '统计范围：'+definition.denominator),el('p','', '过滤规则：'+definition.filter),el('p','', '成员事实编号：'+((definition.member_fact_ids||[]).join('、')||'无成员')),el('p','', '数据版本：'+manifest.meta.fact_base_sha256));box.append(item)});details.append(box);container.append(details)}
+function addQuick(label,value){const box=el('div');box.append(el('small','',label),el('b','',value));document.getElementById('quickFacts').append(box)}
+function addIdentity(label,value){const box=el('div','identity-card');box.append(el('small','',label),el('b','',value));document.getElementById('identityGrid').append(box)}
+function durationText(seconds){const hours=Math.floor(seconds/3600),minutes=Math.floor((seconds%3600)/60),rest=seconds%60;return hours+'小时'+minutes+'分'+rest+'秒'}
+document.title=story.identity.display_name+'｜'+story.identity.symbol+' '+story.identity.direction;
+document.getElementById('tradeTitle').textContent=story.identity.display_name+'｜'+story.identity.symbol+' '+story.identity.direction;
+document.getElementById('tradeSubtitle').textContent=story.identity.summary;
+document.getElementById('heroStory').textContent='仓位 '+story.main_summary.position_path.join(' → ');
+document.getElementById('heroBoundary').textContent='最后仓位为'+story.main_summary.final_position+'；整笔正式净结果'+story.main_summary.final_net_result_status+'。页面中的仓位和成交数量，来源没有明确写出数量单位。';
+addQuick('委托',story.main_summary.order_count+'张');addQuick('仓位变化动作',story.main_summary.step_count+'步');addQuick('真实成交明细',story.main_summary.fill_count+'条');addQuick('可能相关条件单',story.main_summary.condition_count+'张');addQuick('正式净结果',story.main_summary.final_net_result_status);
+appendSummaryDefinitions(document.getElementById('quickFacts').parentElement,story.main_summary.summary_definitions,'核对顶部数量和仓位阶梯怎么算出来');
+addIdentity('稳定周期身份',story.identity.position_cycle_id);addIdentity('账户来源',story.identity.account_plain);addIdentity('当前数据版本',manifest.meta.fact_base_sha256.slice(0,16)+'…');addIdentity('数量单位','来源未明确，不能自动当成具体币种数量');addIdentity('价格单位','来源未单独声明；只按'+story.identity.symbol+'交易对原值展示');addIdentity('开仓／平仓边界','直接委托—成交—仓位链候选，尚未正式采用');addIdentity('委托时间范围（北京时间来源）',story.timeline_policy.order_time_boundary.start+' 至 '+story.timeline_policy.order_time_boundary.end+'｜'+durationText(story.timeline_policy.order_time_boundary.duration_seconds));addIdentity('仓位记录时间范围（原时区未知）',story.timeline_policy.position_record_time_boundary.start+' 至 '+story.timeline_policy.position_record_time_boundary.end+'｜'+durationText(story.timeline_policy.position_record_time_boundary.duration_seconds));addIdentity('整笔统一开始／结束／持续时间','目前未知：不同来源的时间口径尚未统一');
+document.getElementById('overallTimeBoundary').textContent=story.timeline_policy.plain+' 委托记录标为北京时间；仓位动作和条件单只保留来源本地时间，原时区未明确。';
+appendSummaryDefinitions(document.getElementById('identityGrid').parentElement,story.timeline_policy.summary_definitions,'核对三个时间范围怎样从各自同一口径的记录算出');
+document.getElementById('positionPathText').textContent=story.main_summary.position_path.join(' → ');
+const svg=document.getElementById('positionChart'),ns='http://www.w3.org/2000/svg';
+for(const y of ['20','54','88']){const line=document.createElementNS(ns,'line');line.setAttribute('x1','5');line.setAttribute('x2','93');line.setAttribute('y1',y);line.setAttribute('y2',y);line.setAttribute('class','chart-axis');svg.append(line)}
+const path=document.createElementNS(ns,'path');path.setAttribute('d',story.position_plot.path);path.setAttribute('class','chart-path');svg.append(path);
+const pointLabels=['开始',...story.steps.map(step=>step.title)];story.position_plot.points.forEach((point,index)=>{const circle=document.createElementNS(ns,'circle');circle.setAttribute('cx',point.x);circle.setAttribute('cy',point.y);circle.setAttribute('r','2.7');circle.setAttribute('class','chart-point');const value=document.createElementNS(ns,'text');value.setAttribute('x',point.x);value.setAttribute('y',String(point.y-5));value.setAttribute('class','chart-value');value.textContent=point.position;const label=document.createElementNS(ns,'text');label.setAttribute('x',point.x);label.setAttribute('y','97');label.setAttribute('class','chart-label');label.textContent=pointLabels[index];svg.append(circle,value,label)});
+const mobile=document.getElementById('positionMobile');story.position_plot.points.forEach((point,index)=>{const row=el('div','point'),rail=el('div','rail'),dot=el('span','dot'),copy=el('div','copy');rail.append(dot);copy.append(el('b','',point.position),el('span','',pointLabels[index]));row.append(rail,copy);mobile.append(row)});
+document.getElementById('chartDesc').textContent='空头仓位从'+story.main_summary.position_path[0]+'开始，经过开仓和'+story.main_summary.add_position_count+'次加仓，最后到'+story.main_summary.final_position+'。横向只表示步骤顺序，纵向按仓位数量比例绘制。';
+appendSummaryDefinitions(document.querySelector('.chart-wrap'),story.position_plot.summary_definitions,'核对仓位图的峰值、点位和阶梯线怎样算出');
+document.getElementById('stepsHeading').textContent=story.main_summary.step_count+'步看完这笔交易';
+document.getElementById('guideCopy').textContent='先看仓位变化和'+story.main_summary.step_count+'步交易过程；如果某个数字、委托或条件单与你的记忆不一致，再展开对应一步，点“查看原记录”核对来源。';
+const stepLinks=document.getElementById('stepLinks');story.steps.forEach(step=>{const link=el('a','step-link');link.href='#step-'+step.step;link.append(el('b','',step.step+'．'+step.title),el('span','',step.position_before+' → '+step.position_after));stepLinks.append(link)});
+function stepEvidenceIds(step){return [step.position_fact_id,step.order_fact_id,step.position_order_relation_id,...step.fill_relation_ids,...step.lineage_ids,...step.fills.flatMap(fill=>[fill.fact_id,...fill.lineage_ids])]}
+const storySteps=document.getElementById('storySteps');story.steps.forEach(step=>{const card=el('article','step-card');card.id='step-'+step.step;const head=el('div','step-title'),number=el('span','step-number',String(step.step)),headText=el('div');headText.append(el('h3','',step.title),el('p','', '空头仓位 '+step.position_before+' → '+step.position_after+'｜数量单位来源未明确'));head.append(number,headText);
+ const flow=el('div','flow'),order=el('div','flow-box order'),fill=el('div','flow-box fill'),position=el('div','flow-box position');order.append(el('small','', '挂出的委托'),el('strong','',(cnSide[step.side]||step.side)+' '+step.order_quantity+'（单位未核定）'),el('p','', '委托号：'+step.order_id+'｜'+step.order_type+'｜委托价 '+step.order_price),el('p','', '委托最后状态：'+(cnStatus[step.order_status]||step.order_status)));fill.append(el('small','', '真正成交'),el('strong','',(cnSide[step.side]||step.side)+' '+step.executed_quantity+'（单位未核定）'),el('div','fill-meter'));fill.querySelector('.fill-meter').append(el('span'));fill.querySelector('.fill-meter span').style.width=step.filled_percent+'%';fill.append(el('p','',step.fill_count+'条分次成交｜成交价按BTCUSDT原值展示'));position.append(el('small','', '成交后空头仓位'),el('strong','',step.position_before+' → '+step.position_after),el('p','',step.position_change_direction==='DECREASE_SHORT_TO_ZERO'?'空头仓位减少 '+step.position_change+'，最后归零':'空头仓位增加 '+step.position_change));flow.append(order,el('div','flow-arrow','→'),fill,el('div','flow-arrow','→'),position);card.append(head,flow);
+ if(step.unfilled_quantity!=='0'&&step.order_status==='CANCELED')card.append(el('div','remainder','这张委托只成交 '+step.executed_quantity+'，剩余 '+step.unfilled_quantity+' 后来取消；已成交部分仍然计入仓位。'));
+ const holdingAverage=step.holding_average_price_after==='NOT_APPLICABLE_POSITION_CLOSED'?'仓位已归零，不再适用':step.holding_average_price_after;const facts=el('div','step-facts');[['本次成交加权价',step.weighted_fill_price+'（价格单位来源未单独声明）'],['成交后持仓成本均价',holdingAverage],['成交手续费合计',step.fee_from_fills.value+' '+step.fee_from_fills.currency],['来源成交盈亏字段',step.source_realized_pnl.value+' '+step.source_realized_pnl.currency]].forEach(item=>{const box=el('div');box.append(el('small','',item[0]),el('b','',item[1]));facts.append(box)});card.append(facts);
+ const details=el('div','details-area'),orderBoundary=el('div','formula-box');orderBoundary.append(el('p','', '改价／替换候选：'+(step.order_candidate_lifecycle||'当前记录没有候选动作')+'｜确认状态：'+step.order_reprice_replace_status),el('p','', '数量公式：'+step.summary_definitions.executed_quantity.formula+'｜成员 '+step.summary_definitions.executed_quantity.member_fact_ids.length+' 条'),el('p','', '未成交公式：'+step.summary_definitions.unfilled_quantity.formula),el('p','', '成交比例：'+step.summary_definitions.filled_percent.formula+'｜未成交比例：'+step.summary_definitions.unfilled_percent.formula),el('p','', '成交加权价公式：'+step.summary_definitions.weighted_fill_price.formula),el('p','', '手续费公式：'+step.summary_definitions.fill_fee.formula+'；不重复相加仓位动作中的同值'),el('p','', '来源盈亏公式：'+step.summary_definitions.source_realized_pnl.formula));const calculation=el('details');calculation.append(el('summary','', '查看这一步怎么算出来'),orderBoundary);details.append(calculation);const fills=el('details');fills.append(el('summary','', '展开 '+step.fill_count+' 条分次成交和事实编号'));const fillList=el('div','fill-list');step.fills.forEach(member=>{const item=el('div','fill-item');item.append(el('b','',member.member_index+'．成交 '+member.quantity+' @ '+member.price),el('span','', '事实编号：'+member.fact_id),el('span','', '仓位 '+member.position_before+' → '+member.position_after+'｜持仓成本均价 '+member.holding_average_price_before+' → '+member.holding_average_price_after),el('span','', '手续费 '+member.fee+' '+member.fee_asset+'｜来源盈亏 '+member.realized_pnl+' '+member.fee_asset),el('span','',member.time.value+'｜'+member.time.timezone_basis));fillList.append(item)});fills.append(fillList);details.append(fills);
+ const times=el('details');times.append(el('summary','', '查看这一步保存的不同时间'));const timeCopy=el('div','details-copy');step.times.forEach(time=>timeCopy.append(el('p','',time.label+'：'+time.value+'｜口径：'+time.timezone_basis)));timeCopy.append(el('p','',story.timeline_policy.plain));times.append(timeCopy);details.append(times);appendEvidence(details,stepEvidenceIds(step),'查看这一步的事实、关系和来源依据');card.append(details);storySteps.append(card)});
+const conditionSummary=document.getElementById('conditionSummary');[['取消',story.condition_summary.canceled],['过期',story.condition_summary.expired],['已证明触发',story.condition_summary.triggered]].forEach(item=>{const box=el('div');box.append(el('strong','',String(item[1])),el('span','',item[0]));conditionSummary.append(box)});
+document.getElementById('conditionBanner').textContent='本页找到'+story.main_summary.condition_count+'张可能相关的条件单：'+story.condition_summary.canceled+'张后来取消，'+story.condition_summary.expired+'张过期，'+story.condition_summary.triggered+'张有证据证明触发成交。它们没有被画成最后平仓的确定原因。';
+document.getElementById('conditionDetailsSummary').textContent='展开查看全部'+story.main_summary.condition_count+'张条件单';
+appendSummaryDefinitions(conditionSummary.parentElement,story.condition_summary.summary_definitions,'核对条件委托数量怎么算出来');
+const conditionList=document.getElementById('conditionList');story.conditions.forEach((condition,index)=>{const card=el('article','condition-card'),head=el('header');head.append(el('h3','',index+1+'．'+(condition.role||'条件委托')),el('span','status',cnStatus[condition.status]||condition.status));const humanReason=condition.reason_status==='UNKNOWN'?'未知':(condition.reason_text||'已记录，请查看原依据'),replacement=condition.replacement_or_coverage_status==='UNKNOWN_NOT_CONFIRMED_FROM_CURRENT_RECORDS'?'当前记录无法确认':'已有记录，请查看原依据',aiBoundary=condition.ai_judgement_status==='NOT_INCLUDED_IN_OBJECTIVE_FACT'?'没有混入客观事实':'状态异常，本页不作判断';card.append(head,el('p','', '类型：'+condition.condition_type+'｜触发价：'+condition.trigger_price+'（价格单位来源未单独声明）'),el('p','', '创建：'+condition.created_at+'｜结束：'+condition.terminal_at),el('p','', '时间口径：来源本地时间，原时区未明确'),el('p','', '归属：候选关系，尚未正式采用'),el('p','', '取消／未触发的人为原因：'+humanReason+'；条件单之间是否修改替换：'+replacement),el('p','', '人工智能判断：'+aiBoundary));const evidence=el('details');evidence.append(el('summary','', '查看这张条件单的依据'));const list=el('div','record-list');uniq([condition.fact_id,condition.relation_id,...condition.lineage_ids]).forEach(id=>list.append(recordNode(id)));list.append(recordNode(condition.target_reference_fact_id,true));evidence.append(list);card.append(evidence);conditionList.append(card)});
+function moneyCard(label,metric,note,unknown,memberField){const card=el('div','money-card'+(unknown?' unknown':''));card.append(el('small','',label),el('strong','',metric.value?metric.value+' '+metric.currency:'尚未核定'),el('p','details-copy',note));if(metric.member_fact_ids){const details=el('details');details.append(el('summary','', '查看公式和全部 '+metric.member_fact_ids.length+' 条成员'));const box=el('div','formula-box');box.append(el('p','', '指标：'+metric.metric),el('p','', '公式：'+metric.formula),el('p','', '统计范围：'+metric.denominator),el('p','', '过滤规则：'+metric.filter),el('p','', '数据版本：'+manifest.meta.fact_base_sha256));const members=el('div','money-members');story.steps.flatMap(step=>step.fills).forEach(fill=>members.append(el('div','money-member',fill.fact_id+'｜'+memberField+' '+fill[memberField]+' '+fill.fee_asset)));box.append(members);details.append(box);card.append(details)}return card}
+const money=document.getElementById('moneyGrid');money.append(moneyCard(story.money.captured_fill_fees.member_fact_ids.length+'条成交记录里的手续费合计',story.money.captured_fill_fees,'只统计当前'+story.coverage.total+'条同源候选记录中的成交手续费，没有再次相加仓位动作里的同值。',false,'fee'),moneyCard('来源成交字段中的已实现盈亏合计',story.money.source_realized_pnl,'这是来源记录字段，不是本页重新计算的整笔正式净结果。',false,'realized_pnl'),moneyCard('整笔正式净结果',{},'资金费、返佣、其他现金项及正式计算口径还没有在本页闭合。',true));document.getElementById('moneyBoundary').textContent=story.money.plain_boundary;
+const stateGrid=document.getElementById('moduleStates');story.module_states.forEach(state=>{const card=el('div','state-card'),icon=el('span','state-icon',state.kind==='UNKNOWN'?'?':state.kind==='NOT_CAPTURED'?'—':'↗'),copy=el('div');copy.append(el('b','',state.label),el('p','',state.status));card.append(icon,copy);stateGrid.append(card)});document.getElementById('historicalBoundary').textContent='历史核对层：'+story.historical_boundary.plain;
+document.getElementById('coverageFormula').textContent=story.coverage.formula;const coverageGrid=document.getElementById('coverageGrid');[['首层直接显示',story.coverage.direct_count],['展开后显示',story.coverage.expanded_count],['明确未纳入',story.coverage.excluded_count]].forEach(item=>{const box=el('div');box.append(el('strong','',String(item[1])),el('span','',item[0]));coverageGrid.append(box)});
+document.getElementById('coverageTag').textContent='全部'+story.coverage.total+'条都有去向';document.getElementById('directRecordsSummary').textContent='查看首层直接显示的'+story.coverage.direct_count+'条记录';document.getElementById('expandedRecordsSummary').textContent='查看向下展开才能看到的'+story.coverage.expanded_count+'条记录';document.getElementById('excludedRecordsSummary').textContent='查看本页明确未纳入的'+story.coverage.excluded_count+'条记录';
+appendSummaryDefinitions(coverageGrid.parentElement,story.coverage.summary_definitions,'核对覆盖分母、分类数量和外部引用怎么算出来');
+function renderDirectory(target,ids){const container=document.getElementById(target);ids.forEach(id=>container.append(recordNode(id)));if(!ids.length)container.append(el('p','details-copy','当前固定范围内没有这一类记录。'))}
+renderDirectory('directRecords',story.coverage.direct_ids);renderDirectory('expandedRecords',story.coverage.expanded_ids);renderDirectory('excludedRecords',story.coverage.excluded.map(item=>item.id));document.getElementById('externalReference').textContent='另外引用 '+story.coverage.summary_definitions.external_reference_count.value+' 条外部端点身份，只用于说明候选关系指向；它不计入'+story.object_id+'的'+story.coverage.total+'条分母。';
+const identity=manifest.meta.generation_identity||{};document.getElementById('buildBoundary').append(el('strong','', '本页身份与边界：'),document.createTextNode('页面由同一份候选事实底座自动生成。当前覆盖只证明'+story.coverage.total+'条固定候选记录内部没有遗漏，不证明交易所历史绝对全量，也不表示候选已正式采用。'),el('br'),document.createTextNode('事实底座：'+manifest.meta.fact_base_file+'｜'+manifest.meta.fact_base_sha256),el('br'),document.createTextNode('共同依据：'+((identity.common_basis||{}).file||'尚未绑定')));
 })();
 </script>
-</body></html>
+</body>
+</html>
 '''
 
 def visual_asset_safe_id(value):
@@ -4939,11 +6176,11 @@ def validate_user_visual_inline_javascript(html):
     if quote or escaped or block_comment or stack: raise RuntimeError('USER_VISUAL_JAVASCRIPT_UNTERMINATED_STRUCTURE')
     return True
 
-def validate_user_visual_bundle(bundle,payload,records,fact_path,settings):
+def validate_user_visual_bundle(bundle,payload,records,fact_path,settings,generation_identity=None):
     html=bundle['html']; maximum_html_bytes=int(settings['maximum_entry_html_bytes']); maximum_index_bytes=int(settings['maximum_index_bytes']); maximum_chunk_bytes=int(settings['maximum_chunk_bytes'])
     if len(html.encode('utf-8'))>maximum_html_bytes: raise RuntimeError('USER_VISUAL_ENTRY_HTML_TOO_LARGE')
     if len(bundle['index_text'].encode('utf-8'))>maximum_index_bytes: raise RuntimeError('USER_VISUAL_INDEX_TOO_LARGE')
-    checked=validate_user_visual_payload(payload,records,fact_path)
+    checked=validate_user_visual_payload(payload,records,fact_path,generation_identity)
     manifest=user_visual_manifest_from_text(bundle['index_text'])
     if canonical(manifest)!=canonical(bundle['manifest']): raise RuntimeError('USER_VISUAL_INDEX_CONTENT_MISMATCH')
     expected_scripts=[bundle['index_file'],*[item['file'] for item in bundle['chunks']]]
@@ -4962,10 +6199,37 @@ def validate_user_visual_bundle(bundle,payload,records,fact_path,settings):
         meta=manifest['chunks'][position-1]
         if meta['file']!=item['file'] or meta['bytes']!=len(text.encode('utf-8')) or meta['sha256']!=hashlib.sha256(text.encode('utf-8')).hexdigest():
             raise RuntimeError('USER_VISUAL_CHUNK_MANIFEST_BINDING_MISMATCH:'+item['file'])
+        header_fields=('file','global_index','object_position','object_id','chunk_index','chunk_count')
+        if any(parsed.get(key)!=meta.get(key) for key in header_fields):
+            raise RuntimeError('USER_VISUAL_CHUNK_HEADER_MANIFEST_MISMATCH:'+item['file'])
+        parsed_records=parsed.get('records') or []
+        first_id=parsed_records[0]['id'] if parsed_records else None; last_id=parsed_records[-1]['id'] if parsed_records else None
+        if len(parsed_records)!=meta.get('record_count') or first_id!=meta.get('first_fact_id') or last_id!=meta.get('last_fact_id'):
+            raise RuntimeError('USER_VISUAL_CHUNK_RECORD_BOUNDARY_MISMATCH:'+item['file'])
         parsed_chunks.append(parsed)
+    chunk_by_file={item['file']:item for item in parsed_chunks}
+    if len(chunk_by_file)!=len(parsed_chunks): raise RuntimeError('USER_VISUAL_PARSED_CHUNK_FILE_DUPLICATE')
+    owned_chunk_files=[]
+    for object_position,obj in enumerate(manifest['objects'],1):
+        chunk_files=obj.get('chunk_files') or []
+        if not chunk_files: raise RuntimeError('USER_VISUAL_OBJECT_HAS_NO_CHUNK:'+str(obj.get('id')))
+        for chunk_index,name in enumerate(chunk_files,1):
+            part=chunk_by_file.get(name)
+            if not part:
+                raise RuntimeError('USER_VISUAL_OBJECT_REFERENCES_MISSING_CHUNK:'+str(obj.get('id'))+':'+str(name))
+            if (
+                part.get('object_id')!=obj.get('id')
+                or part.get('object_position')!=object_position
+                or part.get('chunk_index')!=chunk_index
+                or part.get('chunk_count')!=len(chunk_files)
+            ):
+                raise RuntimeError('USER_VISUAL_OBJECT_CHUNK_OWNERSHIP_MISMATCH:'+str(obj.get('id'))+':'+str(name))
+            owned_chunk_files.append(name)
+    if len(owned_chunk_files)!=len(set(owned_chunk_files)) or set(owned_chunk_files)!=set(chunk_by_file):
+        raise RuntimeError('USER_VISUAL_OBJECT_CHUNK_OWNERSHIP_NOT_EXACTLY_ONCE')
     reconstructed={
         'meta':manifest['meta'],
-        'objects':[{**{key:value for key,value in obj.items() if key!='chunk_files'},'records':[record for name in obj['chunk_files'] for part in parsed_chunks if part['file']==name for record in part['records']]} for obj in manifest['objects']],
+        'objects':[{**{key:value for key,value in obj.items() if key!='chunk_files'},'records':[record for name in obj['chunk_files'] for record in chunk_by_file[name]['records']]} for obj in manifest['objects']],
     }
     if canonical(reconstructed)!=canonical(payload): raise RuntimeError('USER_VISUAL_RECONSTRUCTED_PAYLOAD_MISMATCH')
     if manifest['payload_content_sha256']!=hashlib.sha256(canonical(payload).encode('utf-8')).hexdigest():
@@ -4976,17 +6240,23 @@ def validate_user_visual_bundle(bundle,payload,records,fact_path,settings):
         r'EventSource\s*\(',r'sendBeacon\s*\(',r'\bimport\s*\(',
     )
     if any(re.search(pattern,html,re.I) for pattern in forbidden): raise RuntimeError('USER_VISUAL_EXTERNAL_RESOURCE_OR_NETWORK_CALL_FOUND')
-    required=('objectSelect','metrics','cards','pager','__TRADING_REVIEW_VISUAL_MANIFEST__','交易过程','关系连接','未知与冲突','来源依据')
+    required=tuple(settings.get('required_sections',[]))+(
+        'identityGrid','overallTimeBoundary','positionChart','storySteps','conditionList','moneyGrid','moduleStates','coverageFormula',
+        '__TRADING_REVIEW_VISUAL_MANIFEST__','待用户核对 · 尚未正式采用','查看原始值、规范值、单位和时间口径',
+    )
     if any(value not in html for value in required): raise RuntimeError('USER_VISUAL_REQUIRED_CONTROL_OR_SECTION_MISSING')
-    if "record.id+'\n" in html or "record.id+'\\n" not in html: raise RuntimeError('USER_VISUAL_JAVASCRIPT_NEWLINE_ESCAPE_INVALID')
+    browser_business_assembly=(r'summary\.includes\s*\(',r'details\.find\s*\(',r'relations\.find\s*\(',r'\bNumber\s*\(',r'Math\.max\s*\(')
+    if any(re.search(pattern,html) for pattern in browser_business_assembly):
+        raise RuntimeError('USER_VISUAL_BROWSER_BUSINESS_ASSEMBLY_FOUND')
     validate_user_visual_inline_javascript(html)
     if '用户核对表格' in html: raise RuntimeError('USER_VISUAL_ACTIVE_EXCEL_LANGUAGE_FOUND')
     return {
         **checked,'bytes':len(html.encode('utf-8')),'offline_local_bundle_no_network':True,
         'entry_html_small':True,'data_index_file':bundle['index_file'],'data_chunk_file_count':len(bundle['chunks']),
         'all_data_chunks_within_limit':True,'manifest_and_chunks_exact':True,'plain_chinese_visual_sections_present':True,
-        'responsive_rules_present':'@media(max-width:380px)' in html,
-        'reduced_motion_rule_present':'prefers-reduced-motion' in html and "reduceMotion?'auto':'smooth'" in html,
+        'responsive_rules_present':'@media(max-width:820px)' in html and '@media(max-width:380px)' in html,
+        'browser_is_render_only':True,'t120_story_and_evidence_directory_present':True,
+        'common_basis_identity_bound':bool((payload['meta'].get('generation_identity') or {}).get('common_basis')),
         'inline_javascript_static_structure_valid':True,
     }
 
@@ -5022,10 +6292,11 @@ def build_views(config_path, output_dir=None, preview_dir=None, verification_out
     ai_text=(build_compact_ai_view_text(records,fact_path,sample_manifest,view) if compact_mode else build_ai_view_text(records,fact_path,sample_manifest,view))
     compact_check=(validate_compact_ai_view(ai_text,records,fact_path,int(view['ai_view']['maximum_bytes'])) if compact_mode else None)
     if not compact_mode and ai_view_records(ai_text)!=records: raise RuntimeError('AI_VIEW_FACT_RECONCILIATION_FAILED')
-    visual_payload=build_user_visual_payload(records,fact_path,config['contract_id'])
-    visual_payload_check=validate_user_visual_payload(visual_payload,records,fact_path)
+    generation_identity=user_visual_generation_identity(config_path,view['user_visual'])
+    visual_payload=build_user_visual_payload(records,fact_path,config['contract_id'],generation_identity)
+    visual_payload_check=validate_user_visual_payload(visual_payload,records,fact_path,generation_identity)
     visual_bundle=build_user_visual_bundle(visual_payload,view['user_visual'])
-    visual_check=validate_user_visual_bundle(visual_bundle,visual_payload,records,fact_path,view['user_visual'])
+    visual_check=validate_user_visual_bundle(visual_bundle,visual_payload,records,fact_path,view['user_visual'],generation_identity)
     visual_asset_names=[visual_bundle['index_file'],*[item['file'] for item in visual_bundle['chunks']]]
     configured_assets=view['user_visual'].get('expected_data_asset_files')
     if configured_assets is not None and visual_asset_names!=configured_assets:
@@ -5768,14 +7039,18 @@ def run_tests(test_path):
         elif kind in {
             'user_visual_payload_complete','user_visual_mutations_rejected','user_visual_deterministic',
             'user_visual_external_resource_rejected','user_visual_plain_sections',
+            'user_visual_trade_story_mutations_rejected','user_visual_trade_story_reconciliation_mutations_rejected',
+            'user_visual_dynamic_summary_bindings','user_visual_story_summary_independent',
         }:
             fact_path=(base/inp['fact_base_file']).resolve(); records=read_jsonl(fact_path)
-            config=json.load(open((base/inp['config_file']).resolve(),encoding='utf-8'))
-            payload=build_user_visual_payload(records,fact_path,config['contract_id'])
+            config_path=(base/inp['config_file']).resolve()
+            config=json.load(open(config_path,encoding='utf-8'))
             settings=config['view_generation']['user_visual']
+            generation_identity=user_visual_generation_identity(config_path,settings)
+            payload=build_user_visual_payload(records,fact_path,config['contract_id'],generation_identity)
             bundle=build_user_visual_bundle(payload,settings); html=bundle['html']
             if kind=='user_visual_payload_complete':
-                checked=validate_user_visual_payload(payload,records,fact_path)
+                checked=validate_user_visual_payload(payload,records,fact_path,generation_identity)
                 actual={key:checked[key] for key in exp}
             elif kind=='user_visual_mutations_rejected':
                 mutations=[]
@@ -5783,22 +7058,33 @@ def run_tests(test_path):
                 duplicated=json.loads(canonical(payload)); duplicated['objects'][0]['records'].append(json.loads(canonical(duplicated['objects'][0]['records'][0]))); mutations.append(duplicated)
                 reordered=json.loads(canonical(payload)); reordered['objects'][0]['records'][0],reordered['objects'][0]['records'][1]=reordered['objects'][0]['records'][1],reordered['objects'][0]['records'][0]; mutations.append(reordered)
                 tampered=json.loads(canonical(payload)); tampered['objects'][0]['records'][0]['canonical_record_sha256']='0'*64; mutations.append(tampered)
+                changed_summary=json.loads(canonical(payload)); changed_summary['objects'][0]['records'][0]['summary']='被篡改的展示摘要'; mutations.append(changed_summary)
+                changed_technical=json.loads(canonical(payload)); t120_object=next(item for item in changed_technical['objects'] if item['id']=='T120'); t120_object['records'][0]['technical']['normalized_value']={'tampered':True}; mutations.append(changed_technical)
+                changed_object_meta=json.loads(canonical(payload)); changed_object_meta['objects'][0]['record_count']+=1; mutations.append(changed_object_meta)
+                changed_page_meta=json.loads(canonical(payload)); changed_page_meta['meta']['record_count']+=1; mutations.append(changed_page_meta)
                 rejected=[]
                 for mutated in mutations:
-                    try: validate_user_visual_payload(mutated,records,fact_path); rejected.append(False)
+                    try: validate_user_visual_payload(mutated,records,fact_path,generation_identity); rejected.append(False)
                     except RuntimeError: rejected.append(True)
                 bundle_mutations=[]
                 missing=json.loads(canonical({'index_file':bundle['index_file'],'manifest':bundle['manifest']})); missing_chunks=list(bundle['chunks'][:-1]); bundle_mutations.append({**bundle,'chunks':missing_chunks})
                 duplicated_chunks=list(bundle['chunks'])+[bundle['chunks'][0]]; bundle_mutations.append({**bundle,'chunks':duplicated_chunks})
                 reversed_chunks=list(bundle['chunks']); reversed_chunks[0],reversed_chunks[1]=reversed_chunks[1],reversed_chunks[0]; bundle_mutations.append({**bundle,'chunks':reversed_chunks})
                 tampered_chunks=[dict(item) for item in bundle['chunks']]; tampered_chunks[0]=dict(tampered_chunks[0]); tampered_chunks[0]['text']=tampered_chunks[0]['text'].replace('"records":[','"records":[{"id":"TAMPER"},',1); bundle_mutations.append({**bundle,'chunks':tampered_chunks})
+                changed_manifest=json.loads(canonical(bundle['manifest'])); changed_manifest['chunks'][0]['record_count']+=1
+                bundle_mutations.append({**bundle,'manifest':changed_manifest,'index_text':user_visual_index_text(changed_manifest)})
+                changed_owner_chunks=[dict(item) for item in bundle['chunks']]
+                changed_owner_part=user_visual_chunk_from_text(changed_owner_chunks[0]['text']); changed_owner_part['object_id']='WRONG-OBJECT'
+                changed_owner_text=user_visual_chunk_text(changed_owner_part); changed_owner_chunks[0]['text']=changed_owner_text
+                changed_owner_manifest=json.loads(canonical(bundle['manifest'])); changed_owner_manifest['chunks'][0]['object_id']='WRONG-OBJECT'; changed_owner_manifest['chunks'][0]['bytes']=len(changed_owner_text.encode('utf-8')); changed_owner_manifest['chunks'][0]['sha256']=hashlib.sha256(changed_owner_text.encode('utf-8')).hexdigest()
+                bundle_mutations.append({**bundle,'chunks':changed_owner_chunks,'manifest':changed_owner_manifest,'index_text':user_visual_index_text(changed_owner_manifest)})
                 bundle_rejected=[]
                 for mutated_bundle in bundle_mutations:
-                    try: validate_user_visual_bundle(mutated_bundle,payload,records,fact_path,settings); bundle_rejected.append(False)
+                    try: validate_user_visual_bundle(mutated_bundle,payload,records,fact_path,settings,generation_identity); bundle_rejected.append(False)
                     except (RuntimeError,KeyError,IndexError,json.JSONDecodeError): bundle_rejected.append(True)
-                actual=all(rejected) and len(rejected)==4 and all(bundle_rejected) and len(bundle_rejected)==4
+                actual=all(rejected) and len(rejected)==8 and all(bundle_rejected) and len(bundle_rejected)==6
             elif kind=='user_visual_deterministic':
-                second=build_user_visual_bundle(build_user_visual_payload(records,fact_path,config['contract_id']),settings)
+                second=build_user_visual_bundle(build_user_visual_payload(records,fact_path,config['contract_id'],generation_identity),settings)
                 actual=(
                     bundle['html']==second['html'] and bundle['index_text']==second['index_text'] and
                     [(item['file'],item['text']) for item in bundle['chunks']]==[(item['file'],item['text']) for item in second['chunks']]
@@ -5813,11 +7099,292 @@ def run_tests(test_path):
                 )
                 rejected=[]
                 for injected in injected_variants:
-                    try: validate_user_visual_bundle({**bundle,'html':injected},payload,records,fact_path,settings); rejected.append(False)
+                    try: validate_user_visual_bundle({**bundle,'html':injected},payload,records,fact_path,settings,generation_identity); rejected.append(False)
                     except RuntimeError: rejected.append(True)
                 actual=all(rejected)
+            elif kind=='user_visual_trade_story_mutations_rejected':
+                def mutated_payload(change):
+                    candidate=json.loads(canonical(payload))
+                    target=next(item for item in candidate['objects'] if item['id']=='T120')
+                    change(target['story'])
+                    return candidate
+                def rejected_payload(change):
+                    try:
+                        validate_user_visual_payload(mutated_payload(change),records,fact_path,generation_identity)
+                        return False
+                    except RuntimeError:
+                        return True
+                def swapped_steps(story):
+                    story['steps'][0],story['steps'][1]=story['steps'][1],story['steps'][0]
+                def changed_partial_fill(story): story['steps'][1].__setitem__('executed_quantity','1.225')
+                def changed_final_position(story): story['main_summary'].__setitem__('final_position','1')
+                def changed_fill_membership(story): story['steps'][0]['fills'].pop()
+                def promoted_condition(story): story['conditions'][0].__setitem__('relationship_status','DIRECT')
+                def invented_quantity_unit(story): story['identity'].__setitem__('quantity_unit_status','BTC')
+                def merged_time_domains(story): story['timeline_policy'].__setitem__('absolute_time_alignment','UNIFIED')
+                def double_counted_fee(story): story['money']['captured_fill_fees'].__setitem__('value','524.9856119')
+                def substituted_coverage(story): story['coverage']['expanded_ids'].__setitem__(0,story['coverage']['direct_ids'][0])
+                def missing_story_reference(story): story['steps'][0].__setitem__('order_fact_id','FACT-MISSING')
+                def changed_main_summary_definition(story): story['main_summary']['summary_definitions']['order_count'].__setitem__('value',999)
+                def changed_step_summary_definition(story): story['steps'][0]['summary_definitions']['filled_percent'].__setitem__('member_fact_ids',[])
+                def changed_condition_summary_definition(story): story['condition_summary']['summary_definitions']['canceled'].__setitem__('denominator','错误分母')
+                def changed_coverage_summary_definition(story): story['coverage']['summary_definitions']['record_type_counts']['value'].__setitem__('事实记录',999)
+                source_relation=json.loads(canonical(records))
+                order_fill=next(item for item in source_relation if (item.get('relation') or {}).get('relation_type')=='ORDER_FILL' and item.get('navigation_object_id')=='T120')
+                relation=order_fill['relation']; relation['source_fact_id'],relation['target_fact_id']=relation['target_fact_id'],relation['source_fact_id']; relation['source_object_type'],relation['target_object_type']=relation['target_object_type'],relation['source_object_type']
+                source_relation_rejected=False
+                try: build_trade_story(source_relation,'T120')
+                except RuntimeError: source_relation_rejected=True
+                def rejected_source(change):
+                    candidate=json.loads(canonical(records)); change(candidate)
+                    try: build_trade_story(candidate,'T120'); return False
+                    except RuntimeError: return True
+                def business_facts(values):
+                    return [item for item in values if item.get('navigation_object_id')=='T120' and item.get('record_type')=='FACT_STATEMENT' and any((item.get('normalized_value') or {}).get(key) for key in ('position_action_id','order_created_at','fill_id','condition_record_id'))]
+                def all_symbol_changed(values):
+                    for item in business_facts(values): item['normalized_value']['symbol']=item['raw_value']['symbol']='ETHUSDT'
+                def all_trade_id_changed(values):
+                    for item in business_facts(values): item['normalized_value']['trade_id']=item['raw_value']['trade_id']='T999'
+                def all_cycle_changed(values):
+                    for item in business_facts(values):
+                        field='position_cycle_id' if 'position_cycle_id' in item['normalized_value'] else 'candidate_cycle_id'; item['normalized_value'][field]=item['raw_value'][field]='OTHER-CYCLE'
+                def changed_action(values):
+                    targets=[item for item in business_facts(values) if (item.get('normalized_value') or {}).get('position_action_id')]; targets[1]['normalized_value']['action_type']=targets[1]['raw_value']['action_type']='REDUCE_POSITION'
+                def changed_order_side(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('order_created_at')); target['normalized_value']['side']=target['raw_value']['side']='BUY'
+                def changed_fill_side(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('fill_id')); target['normalized_value']['side']=target['raw_value']['side']='BUY'
+                def changed_quantity_unit(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('fill_id')); target['units']['quantity']='BTC'
+                def changed_money_unit(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('fill_id')); target['units']['realized_pnl']='BTC'
+                def changed_average_price_chain(values):
+                    targets=[item for item in business_facts(values) if (item.get('normalized_value') or {}).get('fill_id') and (item.get('normalized_value') or {}).get('position_before')!='0']; targets[0]['normalized_value']['average_price_before']=targets[0]['raw_value']['average_price_before']='1'
+                def changed_order_status(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('order_created_at')); target['normalized_value']['status']=target['raw_value']['status']='EXPIRED'
+                def changed_order_type(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('order_created_at')); target['normalized_value']['order_type']=target['raw_value']['order_type']='BOGUS'
+                def changed_fee_asset(values):
+                    for item in business_facts(values):
+                        if (item.get('normalized_value') or {}).get('fill_id'): item['normalized_value']['fee_asset']=item['raw_value']['fee_asset']='BTC'
+                def changed_condition_generated_order(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id')); target['normalized_value']['generated_order_id']=target['raw_value']['generated_order_id']='UNPROVEN-ORDER'
+                def changed_condition_reason(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id')); target['normalized_value']['reason_status']=target['raw_value']['reason_status']='CONFIRMED'
+                def changed_condition_terminal(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id')); target['normalized_value']['terminal_type']=target['raw_value']['terminal_type']='OTHER'
+                def changed_lineage_event(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and item.get('record_type')=='LINEAGE_STATEMENT'); target['source_event_id']=target['normalized_value']['event_id']=target['raw_value']['event_id']='BROKEN-EVENT'
+                def changed_lineage_path(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and item.get('record_type')=='LINEAGE_STATEMENT'); target['source_path']='/tampered/source/path'
+                def changed_business_raw_normalized(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id')); target['normalized_value']['trigger_basis']='TAMPERED'
+                def changed_record_currency(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('fill_id')); target['currency']='BTC'
+                def changed_relation_direction(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='ORDER_FILL'); target['relation']['direction']='TARGET_TO_SOURCE'
+                def swapped_order_fill_binding(values):
+                    targets=[item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='ORDER_FILL'][:2]
+                    for field in ('source_fact_id','source_event_id','source_object_id','source_object_type'):
+                        targets[0]['relation'][field],targets[1]['relation'][field]=targets[1]['relation'][field],targets[0]['relation'][field]
+                def swapped_condition_binding(values):
+                    targets=[item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='CONDITIONAL_ORDER'][:2]
+                    for field in ('source_fact_id','source_event_id','source_object_id','source_object_type'):
+                        targets[0]['relation'][field],targets[1]['relation'][field]=targets[1]['relation'][field],targets[0]['relation'][field]
+                def synchronized_relation_source_swap(values,relation_type):
+                    targets=[item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')==relation_type][:2]
+                    for field in ('source_fact_id','source_event_id','source_object_id','source_object_type'):
+                        targets[0]['relation'][field],targets[1]['relation'][field]=targets[1]['relation'][field],targets[0]['relation'][field]
+                    for container_name in ('normalized_value','raw_value'):
+                        for field in ('source_event_id','source_object_id','source_object_type'):
+                            targets[0][container_name][field],targets[1][container_name][field]=targets[1][container_name][field],targets[0][container_name][field]
+                def synchronized_order_fill_source_swap(values): synchronized_relation_source_swap(values,'ORDER_FILL')
+                def synchronized_condition_source_swap(values): synchronized_relation_source_swap(values,'CONDITIONAL_ORDER')
+                def changed_condition_target_cycle(values):
+                    relations=[item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='CONDITIONAL_ORDER']
+                    target_id=relations[0]['relation']['target_fact_id']; endpoint=next(item for item in values if item.get('fact_id')==target_id)
+                    for item in relations:
+                        item['relation']['target_object_id']='OTHER-CYCLE'; item['normalized_value']['target_object_id']='OTHER-CYCLE'; item['raw_value']['target_object_id']='OTHER-CYCLE'; item['normalized_value']['position_cycle_id']='OTHER-CYCLE'; item['raw_value']['position_cycle_id']='OTHER-CYCLE'
+                    endpoint['object_id']='OTHER-CYCLE'; endpoint['target_object_id']='OTHER-CYCLE'; endpoint['normalized_value']['target_object_id']='OTHER-CYCLE'; endpoint['raw_value']['target_object_id']='OTHER-CYCLE'
+                def reversed_order_time(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('order_created_at'))
+                    for container in (target['normalized_value'],target['raw_value']): container['order_created_at'],container['order_updated_at']=container['order_updated_at'],container['order_created_at']
+                def reversed_condition_time(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id'))
+                    for container in (target['normalized_value'],target['raw_value']):
+                        container['created_at'],container['terminal_at']=container['terminal_at'],container['created_at']; container['lifecycle_duration_seconds']='-1'
+                def changed_condition_duration(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id')); target['normalized_value']['lifecycle_duration_seconds']=target['raw_value']['lifecycle_duration_seconds']='999'
+                def changed_average_price_math(values):
+                    for target in business_facts(values):
+                        value=target.get('normalized_value') or {}
+                        if not value.get('fill_id'): continue
+                        if value.get('position_before')!='0': target['normalized_value']['average_price_before']=target['raw_value']['average_price_before']='999'
+                        if value.get('position_after')!='0': target['normalized_value']['average_price_after']=target['raw_value']['average_price_after']='999'
+                def changed_realized_pnl(values):
+                    for target in business_facts(values):
+                        if (target.get('normalized_value') or {}).get('fill_id'): target['normalized_value']['realized_pnl']=target['raw_value']['realized_pnl']='0'
+                def reversed_position_time(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('position_action_id'))
+                    for container in (target['normalized_value'],target['raw_value']): container['action_start_time']='2999-01-01 00:00:01'; container['action_end_time']='2999-01-01 00:00:00'
+                def changed_relation_object_id(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='ORDER_FILL')
+                    target['relation']['source_object_id']='WRONG-FILL'; target['normalized_value']['source_object_id']='WRONG-FILL'; target['raw_value']['source_object_id']='WRONG-FILL'
+                def downgraded_direct_relation(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='ORDER_FILL')
+                    target['evidence_status']=target['relation']['evidence_status']='BOUNDED'
+                    for container in (target['normalized_value'],target['raw_value']): container['definitive']='false'; container['promotion_prohibited']='true'; container['link_level']='STRONG_CONTEXT'
+                def promoted_candidate_relation(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and (item.get('relation') or {}).get('relation_type')=='CONDITIONAL_ORDER')
+                    target['evidence_status']=target['relation']['evidence_status']='DIRECT'
+                    for container in (target['normalized_value'],target['raw_value']): container['definitive']='true'; container['promotion_prohibited']='false'; container['link_level']='STABLE_KEY_DIRECT'
+                def swapped_single_lineage_events(values):
+                    lineages=[item for item in values if item.get('navigation_object_id')=='T120' and item.get('record_type')=='LINEAGE_STATEMENT']
+                    counts=Counter(item.get('source_event_id') for item in lineages); targets=[item for item in lineages if counts[item.get('source_event_id')]==1][:2]
+                    targets[0]['source_event_id'],targets[1]['source_event_id']=targets[1]['source_event_id'],targets[0]['source_event_id']
+                    for container_name in ('normalized_value','raw_value'):
+                        targets[0][container_name]['event_id'],targets[1][container_name]['event_id']=targets[1][container_name]['event_id'],targets[0][container_name]['event_id']
+                def duplicated_lineage_within_event(values):
+                    lineages=[item for item in values if item.get('navigation_object_id')=='T120' and item.get('record_type')=='LINEAGE_STATEMENT']
+                    grouped=defaultdict(list)
+                    for item in lineages: grouped[item.get('source_event_id')].append(item)
+                    source,target=next(group for group in grouped.values() if len(group)>=3)[:2]
+                    target['normalized_value']=json.loads(canonical(source['normalized_value'])); target['raw_value']=json.loads(canonical(source['raw_value'])); target['source_identity']=json.loads(canonical(source['source_identity']))
+                    for field in ('source_path','source_sha256','source_row','source_sheet'):
+                        if field in source: target[field]=source[field]
+                        else: target.pop(field,None)
+                def changed_condition_raw_status(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id'))
+                    target['normalized_value']['raw_status']=target['raw_value']['raw_status']='已过期'
+                def changed_position_money_units(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('position_action_id'))
+                    target['units']['fee']=target['units']['realized_pnl']='USDT'
+                def changed_condition_reason_status_with_text(values):
+                    target=next(item for item in business_facts(values) if (item.get('normalized_value') or {}).get('condition_record_id'))
+                    for container_name in ('normalized_value','raw_value'):
+                        target[container_name]['reason_status']='NOT_A_REAL_STATUS'; target[container_name]['reason_text']='伪造原因'
+                def changed_lineage_event_type(values):
+                    target=next(item for item in values if item.get('navigation_object_id')=='T120' and item.get('record_type')=='LINEAGE_STATEMENT')
+                    target['normalized_value']['event_type']=target['raw_value']['event_type']='NOT_THE_FACT_TYPE'
+                actual_all={
+                    'step_reorder_rejected':rejected_payload(swapped_steps),
+                    'partial_fill_quantity_change_rejected':rejected_payload(changed_partial_fill),
+                    'final_position_change_rejected':rejected_payload(changed_final_position),
+                    'fill_membership_change_rejected':rejected_payload(changed_fill_membership),
+                    'relation_direction_change_rejected':source_relation_rejected,
+                    'condition_promotion_rejected':rejected_payload(promoted_condition),
+                    'quantity_unit_invention_rejected':rejected_payload(invented_quantity_unit),
+                    'time_domain_merge_rejected':rejected_payload(merged_time_domains),
+                    'fee_double_count_rejected':rejected_payload(double_counted_fee),
+                    'coverage_substitution_rejected':rejected_payload(substituted_coverage),
+                    'missing_story_reference_rejected':rejected_payload(missing_story_reference),
+                    'main_summary_definition_change_rejected':rejected_payload(changed_main_summary_definition),
+                    'step_summary_definition_change_rejected':rejected_payload(changed_step_summary_definition),
+                    'condition_summary_definition_change_rejected':rejected_payload(changed_condition_summary_definition),
+                    'coverage_summary_definition_change_rejected':rejected_payload(changed_coverage_summary_definition),
+                    'source_symbol_change_rejected':rejected_source(all_symbol_changed),
+                    'source_trade_id_change_rejected':rejected_source(all_trade_id_changed),
+                    'source_cycle_change_rejected':rejected_source(all_cycle_changed),
+                    'source_action_change_rejected':rejected_source(changed_action),
+                    'source_order_side_change_rejected':rejected_source(changed_order_side),
+                    'source_fill_side_change_rejected':rejected_source(changed_fill_side),
+                    'source_quantity_unit_change_rejected':rejected_source(changed_quantity_unit),
+                    'source_money_unit_change_rejected':rejected_source(changed_money_unit),
+                    'source_average_price_chain_change_rejected':rejected_source(changed_average_price_chain),
+                    'source_order_status_change_rejected':rejected_source(changed_order_status),
+                    'source_order_type_change_rejected':rejected_source(changed_order_type),
+                    'source_fee_asset_change_rejected':rejected_source(changed_fee_asset),
+                    'source_condition_generated_order_change_rejected':rejected_source(changed_condition_generated_order),
+                    'source_condition_reason_change_rejected':rejected_source(changed_condition_reason),
+                    'source_condition_terminal_change_rejected':rejected_source(changed_condition_terminal),
+                    'source_lineage_event_change_rejected':rejected_source(changed_lineage_event),
+                    'source_lineage_path_change_rejected':rejected_source(changed_lineage_path),
+                    'source_business_raw_normalized_divergence_rejected':rejected_source(changed_business_raw_normalized),
+                    'source_record_currency_change_rejected':rejected_source(changed_record_currency),
+                    'source_relation_direction_change_rejected':rejected_source(changed_relation_direction),
+                    'source_order_fill_binding_swap_rejected':rejected_source(swapped_order_fill_binding),
+                    'source_condition_binding_swap_rejected':rejected_source(swapped_condition_binding),
+                    'source_condition_target_cycle_change_rejected':rejected_source(changed_condition_target_cycle),
+                    'source_order_time_reversal_rejected':rejected_source(reversed_order_time),
+                    'source_condition_time_reversal_rejected':rejected_source(reversed_condition_time),
+                    'source_condition_duration_change_rejected':rejected_source(changed_condition_duration),
+                    'source_average_price_math_change_rejected':rejected_source(changed_average_price_math),
+                    'source_realized_pnl_change_rejected':rejected_source(changed_realized_pnl),
+                    'source_position_time_reversal_rejected':rejected_source(reversed_position_time),
+                    'source_relation_object_id_change_rejected':rejected_source(changed_relation_object_id),
+                    'source_direct_relation_evidence_downgrade_rejected':rejected_source(downgraded_direct_relation),
+                    'source_candidate_relation_evidence_promotion_rejected':rejected_source(promoted_candidate_relation),
+                    'source_synchronized_order_fill_source_swap_rejected':rejected_source(synchronized_order_fill_source_swap),
+                    'source_synchronized_condition_source_swap_rejected':rejected_source(synchronized_condition_source_swap),
+                    'source_single_lineage_event_swap_rejected':rejected_source(swapped_single_lineage_events),
+                    'source_duplicate_lineage_within_event_rejected':rejected_source(duplicated_lineage_within_event),
+                    'source_condition_raw_status_mapping_change_rejected':rejected_source(changed_condition_raw_status),
+                    'source_position_money_unit_currency_mismatch_rejected':rejected_source(changed_position_money_units),
+                    'source_condition_invalid_reason_status_with_text_rejected':rejected_source(changed_condition_reason_status_with_text),
+                    'source_lineage_event_type_fact_mismatch_rejected':rejected_source(changed_lineage_event_type),
+                }
+                actual={key:actual_all[key] for key in exp}
+            elif kind=='user_visual_trade_story_reconciliation_mutations_rejected':
+                original_story=next(item for item in payload['objects'] if item['id']=='T120')['story']
+                def rejected_reconciliation(change):
+                    candidate=json.loads(canonical(original_story)); change(candidate)
+                    try: validate_trade_story_reconciliation(candidate,records,'T120'); return False
+                    except RuntimeError: return True
+                def main_member_substitution(story):
+                    story['main_summary']['summary_definitions']['order_count']['member_fact_ids'][0]=story['main_summary']['summary_definitions']['fill_count']['member_fact_ids'][0]
+                def duplicated_main_member(story):
+                    members=story['main_summary']['summary_definitions']['order_count']['member_fact_ids']; members[1]=members[0]
+                def step_fill_member_substitution(story):
+                    story['steps'][0]['summary_definitions']['executed_quantity']['member_fact_ids'][0]=story['steps'][1]['fills'][0]['fact_id']
+                def holding_average_member_substitution(story):
+                    story['steps'][0]['summary_definitions']['holding_average_price_after']['member_fact_ids'][0]=story['steps'][0]['fills'][0]['fact_id']
+                def condition_member_substitution(story):
+                    story['condition_summary']['summary_definitions']['canceled']['member_fact_ids'][0]=story['condition_summary']['summary_definitions']['expired']['member_fact_ids'][0]
+                def coverage_member_substitution(story):
+                    story['coverage']['expanded_ids'][0]=story['coverage']['direct_ids'][0]
+                def record_type_member_swap(story):
+                    groups=story['coverage']['summary_definitions']['record_type_counts']['member_groups']; groups['事实记录'][0],groups['关系记录'][0]=groups['关系记录'][0],groups['事实记录'][0]
+                def evidence_member_swap(story):
+                    groups=story['coverage']['summary_definitions']['evidence_status_counts']['member_groups']; groups['直接证据'][0],groups['限定范围证据'][0]=groups['限定范围证据'][0],groups['直接证据'][0]
+                def external_member_change(story): story['coverage']['summary_definitions']['external_reference_count'].__setitem__('member_fact_ids',[])
+                def synchronized_time_change(story):
+                    story['timeline_policy']['order_time_boundary']['start']='2000-01-01 00:00:00'; story['timeline_policy']['summary_definitions']['order_time_boundary']['value']['start']='2000-01-01 00:00:00'
+                def synchronized_plot_change(story):
+                    story['position_plot']['peak']='999'; story['position_plot']['summary_definitions']['peak']['value']='999'
+                def money_member_substitution(story):
+                    story['money']['captured_fill_fees']['member_fact_ids'][0]=story['steps'][0]['position_fact_id']
+                actual_all={
+                    'main_equal_count_member_substitution_rejected':rejected_reconciliation(main_member_substitution),
+                    'main_duplicate_member_rejected':rejected_reconciliation(duplicated_main_member),
+                    'step_equal_count_fill_member_substitution_rejected':rejected_reconciliation(step_fill_member_substitution),
+                    'step_holding_average_member_substitution_rejected':rejected_reconciliation(holding_average_member_substitution),
+                    'condition_equal_count_member_substitution_rejected':rejected_reconciliation(condition_member_substitution),
+                    'coverage_equal_count_member_substitution_rejected':rejected_reconciliation(coverage_member_substitution),
+                    'record_type_equal_count_member_swap_rejected':rejected_reconciliation(record_type_member_swap),
+                    'evidence_equal_count_member_swap_rejected':rejected_reconciliation(evidence_member_swap),
+                    'external_reference_member_change_rejected':rejected_reconciliation(external_member_change),
+                    'synchronized_time_boundary_change_rejected':rejected_reconciliation(synchronized_time_change),
+                    'synchronized_position_plot_change_rejected':rejected_reconciliation(synchronized_plot_change),
+                    'money_equal_count_member_substitution_rejected':rejected_reconciliation(money_member_substitution),
+                }
+                actual={key:actual_all[key] for key in exp}
+            elif kind=='user_visual_dynamic_summary_bindings':
+                forbidden_static=('四步看完这笔交易','空头仓位从零开始，经过开仓和两次加仓','本页找到10张可能相关的条件单','展开查看全部10张条件单','全部172条都有去向','38条成交记录里的手续费合计','T120的172条分母')
+                actual={
+                    'no_static_business_summary_duplicates':all(value not in html for value in forbidden_static),
+                    'main_summary_dynamic_bindings_present':all(value in html for value in ('story.main_summary.step_count','story.main_summary.add_position_count','story.main_summary.final_position')),
+                    'condition_summary_dynamic_bindings_present':all(value in html for value in ('story.main_summary.condition_count','story.condition_summary.canceled','story.condition_summary.expired','story.condition_summary.triggered')),
+                    'coverage_dynamic_bindings_present':all(value in html for value in ('story.coverage.total','story.coverage.direct_count','story.coverage.expanded_count','story.coverage.excluded_count')),
+                    'money_dynamic_member_count_present':'story.money.captured_fill_fees.member_fact_ids.length' in html,
+                    'timeline_and_plot_definitions_rendered':all(value in html for value in ('story.timeline_policy.summary_definitions','story.position_plot.summary_definitions')),
+                }
+            elif kind=='user_visual_story_summary_independent':
+                altered=json.loads(canonical(records))
+                for item in altered:
+                    if item.get('navigation_object_id')=='T120': item['plain_summary']='这段摘要被故意替换，不得改变结构化交易故事。'
+                actual=canonical(build_trade_story(records,'T120'))==canonical(build_trade_story(altered,'T120'))
             else:
-                checked=validate_user_visual_bundle(bundle,payload,records,fact_path,settings)
+                checked=validate_user_visual_bundle(bundle,payload,records,fact_path,settings,generation_identity)
                 outputs=config['view_generation']['outputs']
                 detail_labels={detail['label'] for obj in payload['objects'] for record in obj['records'] for detail in record['details']}
                 allowed_outputs=set(config.get('allowed_git_outputs',[]))
@@ -5832,10 +7399,13 @@ def run_tests(test_path):
                     'all_visual_bundle_files_allowed_git_outputs':len(visual_entry_paths)==1 and expected_visual_bundle_paths.issubset(allowed_outputs),
                     'plain_chinese_sections_present':checked['plain_chinese_visual_sections_present'],
                     'responsive_rules_present':checked['responsive_rules_present'],
-                    'reduced_motion_respected':checked['reduced_motion_rule_present'],
+                    'browser_is_render_only':checked['browser_is_render_only'],
+                    'common_basis_identity_bound':checked['common_basis_identity_bound'],
+                    't120_story_and_evidence_directory_present':checked['t120_story_and_evidence_directory_present'],
+                    't120_trade_story_semantics_exact':checked['t120_trade_story_semantics_exact'],
                     'inline_javascript_static_structure_valid':checked['inline_javascript_static_structure_valid'],
                     'plain_detail_labels_in_chinese':detail_labels.issubset(set(VISUAL_DETAIL_LABELS.values())),
-                    'short_user_guide_present':'怎么核对' in html and '记下卡片底部的事实编号' in html,
+                    'short_user_guide_present':'怎么核对这页依据' in html and '查看原记录' in html,
                     'user_understandability_waiting':checked['user_understandability_status']=='WAITING_FOR_USER_ACTUAL_REVIEW',
                     'entry_html_small':checked['entry_html_small'],
                     'offline_local_bundle_no_network':checked['offline_local_bundle_no_network'],
