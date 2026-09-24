@@ -258,14 +258,14 @@ window.__TRADING_REVIEW_VISUAL_MANIFEST__={
     "fact_base_sha256":"2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9",
     "generation_identity":{
       "common_basis":{
-        "bytes":23377,
+        "bytes":23753,
         "file":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md",
-        "sha256":"1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"
+        "sha256":"2957668861bceba007860976a5251e5c7df4877634edb8e0c672a55b5ed6b075"
       },
       "config":{
         "bytes":46890,
         "file":"07_构建配置_依赖与运行环境锁定候选.json",
-        "sha256":"b93b4d4eea56cb40f3fa0e1631ff5b786543731bfdd2c46fd2aa9a16e5ce2476"
+        "sha256":"f7beefc21fd69bcff542ae59a7cc1fecfdc6f66349b5e8b2eafa05fb35e3fb63"
       },
       "program":{
         "bytes":638709,
@@ -6309,6 +6309,6 @@ window.__TRADING_REVIEW_VISUAL_MANIFEST__={
     }
   ],
   "package_version":"1.0",
-  "payload_content_sha256":"7cc76d6795a98d8566befcc008abdbc1cbf647887327f9bd7ebb0583db645654",
+  "payload_content_sha256":"1f962bb5604397cf1b922788fd117ec30757909155794e798f9f1be958c4da79",
   "record_count":3902
 };

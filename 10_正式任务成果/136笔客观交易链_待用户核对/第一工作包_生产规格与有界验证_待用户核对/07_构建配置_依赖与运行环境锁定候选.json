@@ -463,7 +463,7 @@
       {"path":"06_构建与确定性装载程序候选.py","destination_name":"06_构建与确定性装载程序候选.py","bytes":638709,"sha256":"b96342d052052b28f8d1edcd162e07c2409f7d00ffe0aaed6a2e10b89a16b66c"},
       {"path":"08_最小程序测试与预期结果候选.jsonl","destination_name":"08_最小程序测试与预期结果候选.jsonl","bytes":82287,"sha256":"e341a72009a2285351b5a6a082a347017d1ca42a4285d83cd5bf2b673b690edb"},
       {"path":"09_有界验证样本清单候选.json","destination_name":"09_有界验证样本清单候选.json","bytes":413811,"sha256":"9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"},
-      {"path":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md","destination_name":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md","bytes":23377,"sha256":"1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"},
+      {"path":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md","destination_name":"16_单笔客观交易链可视化完整性共同依据_用户确认版.md","bytes":23753,"sha256":"2957668861bceba007860976a5251e5c7df4877634edb8e0c672a55b5ed6b075"},
       {"path":"../../客观交易链正式构成与构建输入联合裁定_待用户核对/阶段三_PRE与POST_客观交易链正式构成与构建输入最终交叉裁定_待用户核对/阶段三_机器总账.jsonl","destination_name":"阶段三_机器总账.jsonl","bytes":1904700,"sha256":"d41694adfe54a0ba1a29d8ab66d991b31bc98635ccb295965eda8e5d5a4dcafa"}
     ],
     "commands": {
@@ -534,8 +534,8 @@
       "maximum_chunk_bytes": 524288,
       "common_basis": {
         "file": "16_单笔客观交易链可视化完整性共同依据_用户确认版.md",
-        "bytes": 23377,
-        "sha256": "1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"
+        "bytes": 23753,
+        "sha256": "2957668861bceba007860976a5251e5c7df4877634edb8e0c672a55b5ed6b075"
       },
       "quality_receipt_file": "13_自动质量检查与内容指纹候选.json",
       "expected_data_asset_files": [

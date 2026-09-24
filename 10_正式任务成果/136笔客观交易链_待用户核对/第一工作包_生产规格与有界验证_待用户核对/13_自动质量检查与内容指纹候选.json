@@ -10,8 +10,8 @@
     "contract_sha256": "f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca",
     "common_basis": {
       "file": "16_单笔客观交易链可视化完整性共同依据_用户确认版.md",
-      "bytes": 23377,
-      "sha256": "1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"
+      "bytes": 23753,
+      "sha256": "2957668861bceba007860976a5251e5c7df4877634edb8e0c672a55b5ed6b075"
     },
     "formal_program": {
       "file": "06_构建与确定性装载程序候选.py",
@@ -21,7 +21,7 @@
     "formal_config": {
       "file": "07_构建配置_依赖与运行环境锁定候选.json",
       "bytes": 46890,
-      "sha256": "b93b4d4eea56cb40f3fa0e1631ff5b786543731bfdd2c46fd2aa9a16e5ce2476"
+      "sha256": "f7beefc21fd69bcff542ae59a7cc1fecfdc6f66349b5e8b2eafa05fb35e3fb63"
     },
     "formal_tests": {
       "file": "08_最小程序测试与预期结果候选.jsonl",
@@ -44,7 +44,8 @@
       "12_用户核对可视化测试版候选_数据_09_U016_0001.js",
       "12_用户核对可视化测试版候选_数据_10_CROSS_OBJECT_RELATIONS_0001.js",
       "12_用户核对可视化测试版候选_数据_11_T087_METHOD_0001.js",
-      "13_自动质量检查与内容指纹候选.json"
+      "13_自动质量检查与内容指纹候选.json",
+      "16_单笔客观交易链可视化完整性共同依据_用户确认版.md"
     ],
     "protected_files_unchanged": [
       "04_任务与问题/04A_当前任务授权.md",
@@ -61,8 +62,7 @@
       "11_AI读取测试版候选.md",
       "12_用户核对测试版候选.xlsx",
       "14_用户白话检查说明与04B对应回执_待用户核对.md",
-      "15_T120单笔交易可视化页面_未完成查缺样本.html",
-      "16_单笔客观交易链可视化完整性共同依据_用户确认版.md"
+      "15_T120单笔交易可视化页面_未完成查缺样本.html"
     ],
     "historical_excel_currently_active": false,
     "historical_excel_modified_in_this_round": false,
@@ -86,10 +86,10 @@
       "file": "12_用户核对可视化测试版候选.html",
       "bytes": 43293,
       "sha256": "9fe42f4a09da80a71f2db85b0d0bf3f906f6da3a0dc552cbb55f2f23bf763a23",
-      "view_content_sha256": "7cc76d6795a98d8566befcc008abdbc1cbf647887327f9bd7ebb0583db645654",
+      "view_content_sha256": "1f962bb5604397cf1b922788fd117ec30757909155794e798f9f1be958c4da79",
       "data_index_file": "12_用户核对可视化测试版候选_数据索引.js",
       "data_index_bytes": 272524,
-      "data_index_sha256": "f9dd7a9e86cff35672d2b8b3439fef83c626c90f7e10075403472ec7c0420f6a",
+      "data_index_sha256": "f3bd87907afb7458ecceaa9cbee5a5a163449c5f2ed33256c3a24b76bfdece66",
       "data_chunk_count": 19,
       "data_chunk_total_bytes": 5339381,
       "maximum_data_chunk_bytes": 524104,
@@ -105,10 +105,10 @@
       "unchanged_from_branch_parent": true
     },
     "candidate_package_files_manifest_excluding_self": {
-      "definition": "排除本质量回执自身后，对同目录37份文件按文件名排序，逐行保存文件名、字节数和SHA-256，再对UTF-8清单计算SHA-256。",
+      "definition": "排除本质量回执自身后，对固定候选提交中同目录37份受控文件按文件名排序，逐行保存文件名、字节数和SHA-256，再对UTF-8清单计算SHA-256；未提交的本地临时文件不属于候选包。",
       "file_count": 37,
       "bytes": 4813,
-      "sha256": "847e3f1228282441483fcfbe53e9a0f3658f0be2a7fb8f401b45250fe934706a",
+      "sha256": "de16af33f741d4906e81bac167ba8874d4dc40a49f7fcff3349e82f7727116a5",
       "self_exclusion_reason": "本文件无法把自身最终SHA-256写进自身而不形成循环；本文件最终身份由Git固定提交保存。"
     }
   },
@@ -250,7 +250,7 @@
     {"name": "04_数据结构与规范化规则候选.json", "bytes": 9172, "sha256": "df70e09eb953c1bea804077872c24d8d43f36e7982cc354bb6d294e639dcbee9"},
     {"name": "05_三项重新计算前置合同与依赖候选.json", "bytes": 33015, "sha256": "7854b3dd634d1a501f11b5ad098455c7dea59c9410017f09ceabafc678afc0f7"},
     {"name": "06_构建与确定性装载程序候选.py", "bytes": 638709, "sha256": "b96342d052052b28f8d1edcd162e07c2409f7d00ffe0aaed6a2e10b89a16b66c"},
-    {"name": "07_构建配置_依赖与运行环境锁定候选.json", "bytes": 46890, "sha256": "b93b4d4eea56cb40f3fa0e1631ff5b786543731bfdd2c46fd2aa9a16e5ce2476"},
+    {"name": "07_构建配置_依赖与运行环境锁定候选.json", "bytes": 46890, "sha256": "f7beefc21fd69bcff542ae59a7cc1fecfdc6f66349b5e8b2eafa05fb35e3fb63"},
     {"name": "08_最小程序测试与预期结果候选.jsonl", "bytes": 82287, "sha256": "e341a72009a2285351b5a6a082a347017d1ca42a4285d83cd5bf2b673b690edb"},
     {"name": "09_有界验证样本清单候选.json", "bytes": 413811, "sha256": "9dccbb9e2095b50be4da787c862c23fc924b2fcb1dc3f8dc97b7187caa0bc9a2"},
     {"name": "10_有界测试事实底座候选.jsonl", "bytes": 19279441, "sha256": "2bc3b9ef2574eddee3e496e688456cbabf7fc569955cebb0a067545ddb2484f9"},
@@ -275,11 +275,11 @@
     {"name": "12_用户核对可视化测试版候选_数据_09_U016_0001.js", "bytes": 3658, "sha256": "fdeacd7f9db97979d03df754a964f4ccdab8980a969715a63a90237daa32a790"},
     {"name": "12_用户核对可视化测试版候选_数据_10_CROSS_OBJECT_RELATIONS_0001.js", "bytes": 8868, "sha256": "81ad242dbdbba1b630f4fdb3a6441db7c12b0a4963ad3e66e48c0716d4a964f4"},
     {"name": "12_用户核对可视化测试版候选_数据_11_T087_METHOD_0001.js", "bytes": 2740, "sha256": "fde9ff8d97fc8164ccb364b7f5618ad9636ce4f75b3c4864c9dd5eedc549c230"},
-    {"name": "12_用户核对可视化测试版候选_数据索引.js", "bytes": 272524, "sha256": "f9dd7a9e86cff35672d2b8b3439fef83c626c90f7e10075403472ec7c0420f6a"},
+    {"name": "12_用户核对可视化测试版候选_数据索引.js", "bytes": 272524, "sha256": "f3bd87907afb7458ecceaa9cbee5a5a163449c5f2ed33256c3a24b76bfdece66"},
     {"name": "12_用户核对测试版候选.xlsx", "bytes": 1444675, "sha256": "a8947e8966a79a78f7add1a4eddc46a1f9673efd71a3e91b06798a3c3f20b883"},
     {"name": "14_用户白话检查说明与04B对应回执_待用户核对.md", "bytes": 11782, "sha256": "a40ecb03b23f812ab768ea5ef10f99a772c9d19f2f195c3110125e7a5a9cedbd"},
     {"name": "15_T120单笔交易可视化页面_未完成查缺样本.html", "bytes": 27899, "sha256": "9a47620d601f040c1bfd0cc663e533c52fc2f28839415fbd6d3f2326ce9f8ccf"},
-    {"name": "16_单笔客观交易链可视化完整性共同依据_用户确认版.md", "bytes": 23377, "sha256": "1b480ee5bc9b5480fc352f01b5fe9e678e5908420897be00cc4f60efbed68a3e"}
+    {"name": "16_单笔客观交易链可视化完整性共同依据_用户确认版.md", "bytes": 23753, "sha256": "2957668861bceba007860976a5251e5c7df4877634edb8e0c672a55b5ed6b075"}
   ],
   "review_state": {
     "latest_chat_title": "交易分析chat",
