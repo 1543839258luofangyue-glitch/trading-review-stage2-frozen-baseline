@@ -6,7 +6,7 @@
   "scope_statement": "本文件记录按《单笔客观交易链可视化完整性共同依据》重新生成T120单笔交易页面后的实际检查结果。第12号HTML、一份本地数据索引和19份本地数据分块合起来仍是同一份用户核对候选，不是第二套事实。页面现在用同一套已验证数据讲清仓位变化、四步委托与成交、条件单、金额边界、未知项和172条记录去向；旧Excel保持原样且不是当前用户入口。本轮通过程序检查和真实浏览器检查，但不等于用户已经看懂或认可，不等于四十四项候选已正式采用，不等于三项真实重算已运行，也不等于136笔客观交易链已经建立。",
   "fixed_identities": {
     "formal_base_commit": "e57aa7eefac1bf0b8fe015345c7f0b42a8892597",
-    "current_branch_parent_commit": "3ae4835e49a2f58a5fccd8277c1e133bda36f891",
+    "current_branch_parent_commit": "c975fafea18519b903a8b05df4131353730b6070",
     "contract_sha256": "f683d59ec39bed32e81fd379d88d1406057fe97047036fd8cac5f97e46ddddca",
     "common_basis": {
       "file": "16_单笔客观交易链可视化完整性共同依据_用户确认版.md",
